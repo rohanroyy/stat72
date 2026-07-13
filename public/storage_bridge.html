@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Storage Bridge</title>
+  <script>
+    // Listen for messages from the admin subdomain
+    window.addEventListener('message', (event) => {
+      try {
+        const allowedDomain = window.location.hostname;
+        const originHost = new URL(event.origin).hostname;
+        
+        // Securely check if the origin is the same domain or a subdomain of it
+        if (originHost !== allowedDomain && !originHost.endsWith('.' + allowedDomain)) {
+          return;
+        }
+
+        const data = event.data;
+        if (!data || typeof data !== 'object') return;
+
+        const { action, key, value } = data;
+
+        if (action === 'get') {
+          const val = localStorage.getItem(key);
+          event.source.postMessage({ action: 'get_result', key, value: val }, event.origin);
+        } else if (action === 'set') {
+          localStorage.setItem(key, value);
+          event.source.postMessage({ action: 'set_success', key }, event.origin);
+        } else if (action === 'clear') {
+          localStorage.removeItem(key);
+          event.source.postMessage({ action: 'clear_success', key }, event.origin);
+        }
+      } catch (err) {
+        console.error('Storage bridge error:', err);
+      }
+    });
+  </script>
+</head>
+<body>
+</body>
+</html>
