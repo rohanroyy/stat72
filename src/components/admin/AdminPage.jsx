@@ -356,7 +356,7 @@ export default function AdminPage({
         color: 'var(--text-secondary)',
         lineHeight: '1.6'
       }}>
-        <strong>Admin URL:</strong> Secure access to this dashboard is configured at <code>http://admin.localhost:5173/</code> or <code>http://localhost:5173/?admin=true</code>. Share this URL only with authorized personnel.
+        <strong>Admin URL:</strong> Open <code>https://stat72du.vercel.app/?admin=true</code> (or <code>?page=admin</code>). Locally: <code>http://localhost:5173/?admin=true</code>. Share only with authorized personnel.
       </div>
 
       {/* ── Google API Key ───────────────────────────────────────────── */}
