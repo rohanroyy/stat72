@@ -1,75 +1,138 @@
-/**
- * Exam Schedule Service
- * Manages exam data in localStorage.
- */
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEY = 'studydock_exams';
 
-/**
- * Returns all saved exams as an array, sorted by date.
- */
-export function getExams() {
+function rowToExam(row) {
+  return {
+    id: row.id,
+    subject: row.subject,
+    date: row.date,
+    time: row.time || '',
+    duration: row.duration || '',
+    room: row.room || '',
+    notes: row.notes || '',
+  };
+}
+
+function examToRow(exam) {
+  return {
+    id: exam.id,
+    subject: exam.subject,
+    date: exam.date,
+    time: exam.time || '',
+    duration: exam.duration || '',
+    room: exam.room || '',
+    notes: exam.notes || '',
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function sortExams(exams) {
+  return [...exams].sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function readLocalExams() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return Array.isArray(parsed) ? sortExams(parsed) : [];
   } catch {
     return [];
   }
 }
 
-/**
- * Save all exams array at once.
- */
-export function saveAllExams(exams) {
+function writeLocalExams(exams) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(exams));
 }
 
-/**
- * Add or update an exam. If exam.id exists, update; otherwise insert with generated id.
- * @param {Object} exam - { id?, subject, date (YYYY-MM-DD), time, duration, room, notes }
- */
-export function saveExam(exam) {
-  const exams = getExams();
-  if (exam.id) {
-    const idx = exams.findIndex(e => e.id === exam.id);
-    if (idx !== -1) {
-      exams[idx] = { ...exams[idx], ...exam };
-    } else {
-      exams.push(exam);
-    }
-  } else {
-    exams.push({
-      ...exam,
-      id: `exam_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    });
-  }
-  saveAllExams(exams);
-  return getExams();
+export function getExams() {
+  return readLocalExams();
 }
 
-/**
- * Delete an exam by id.
- */
-export function deleteExam(id) {
-  const exams = getExams().filter(e => e.id !== id);
-  saveAllExams(exams);
+export async function fetchExams() {
+  if (!isSupabaseConfigured()) return readLocalExams();
+
+  const { data, error } = await supabase
+    .from('exams')
+    .select('*')
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  const exams = sortExams((data || []).map(rowToExam));
+  writeLocalExams(exams);
   return exams;
 }
 
-/**
- * Get exams for a specific date string (YYYY-MM-DD).
- */
-export function getExamsForDate(dateStr) {
-  return getExams().filter(e => e.date === dateStr);
+export async function saveExam(exam) {
+  const id = exam.id || `exam_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const payload = { ...exam, id };
+
+  if (!isSupabaseConfigured()) {
+    const exams = readLocalExams();
+    const idx = exams.findIndex((e) => e.id === id);
+    if (idx !== -1) exams[idx] = { ...exams[idx], ...payload };
+    else exams.push(payload);
+    writeLocalExams(exams);
+    return sortExams(exams);
+  }
+
+  const { error } = await supabase.from('exams').upsert(examToRow(payload), { onConflict: 'id' });
+  if (error) throw error;
+
+  return fetchExams();
 }
 
-/**
- * Get all dates that have at least one exam (as a Set of YYYY-MM-DD strings).
- */
-export function getExamDates() {
-  const dates = getExams().map(e => e.date);
-  return new Set(dates);
+export async function deleteExam(id) {
+  if (!isSupabaseConfigured()) {
+    const exams = readLocalExams().filter((e) => e.id !== id);
+    writeLocalExams(exams);
+    return exams;
+  }
+
+  const { error } = await supabase.from('exams').delete().eq('id', id);
+  if (error) throw error;
+
+  return fetchExams();
+}
+
+export function getExamsForDate(dateStr, exams = readLocalExams()) {
+  return exams.filter((e) => e.date === dateStr);
+}
+
+export function getExamDates(exams = readLocalExams()) {
+  return new Set(exams.map((e) => e.date));
+}
+
+export async function migrateExamsFromLocalStorage() {
+  if (!isSupabaseConfigured()) return;
+
+  const { count, error: countError } = await supabase
+    .from('exams')
+    .select('*', { count: 'exact', head: true });
+
+  if (countError) throw countError;
+  if (count > 0) return;
+
+  const local = readLocalExams();
+  if (!local.length) return;
+
+  const rows = local.map(examToRow);
+  const { error } = await supabase.from('exams').insert(rows);
+  if (error) throw error;
+}
+
+export function subscribeToExams(onChange) {
+  if (!isSupabaseConfigured()) return () => {};
+
+  const channel = supabase
+    .channel('exams_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'exams' }, () => {
+      onChange();
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

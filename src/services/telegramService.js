@@ -1,4 +1,6 @@
 import { getFileType, getTypeLabel, formatSize, formatDate, getExtension } from './driveService';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { saveTelegramCustomTopicNames } from './settingsService';
 
 const STORAGE_TOKEN_KEY = 'studydock_telegram_token';
 const STORAGE_CHAT_ID_KEY = 'studydock_telegram_chat_id';
@@ -79,19 +81,25 @@ export function getCustomTopicNames() {
  * Save a custom name for a topic thread ID.
  * These override the auto-detected names.
  */
-export function saveCustomTopicName(threadId, name) {
+export async function saveCustomTopicName(threadId, name) {
   const existing = getCustomTopicNames();
   existing[threadId.toString()] = name.trim();
   localStorage.setItem(STORAGE_CUSTOM_NAMES_KEY, JSON.stringify(existing));
+  if (isSupabaseConfigured()) {
+    await saveTelegramCustomTopicNames(existing);
+  }
 }
 
 /**
  * Delete a custom topic name override.
  */
-export function deleteCustomTopicName(threadId) {
+export async function deleteCustomTopicName(threadId) {
   const existing = getCustomTopicNames();
   delete existing[threadId.toString()];
   localStorage.setItem(STORAGE_CUSTOM_NAMES_KEY, JSON.stringify(existing));
+  if (isSupabaseConfigured()) {
+    await saveTelegramCustomTopicNames(existing);
+  }
 }
 
 /**

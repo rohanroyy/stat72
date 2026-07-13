@@ -257,18 +257,18 @@ export default function AdminPage({
     new Set([...Object.keys(topicsMap), ...Object.keys(customNames)])
   ).filter(id => id !== 'topic-general');
 
-  const handleSaveTopicName = (e) => {
+  const handleSaveTopicName = async (e) => {
     e.preventDefault();
     const tid = newThreadId.trim();
     const tname = newTopicName.trim();
     if (!tid || !tname) return;
 
-    saveCustomTopicName(tid, tname);
-    syncToBridge('telegram_custom_topic_names', localStorage.getItem('telegram_custom_topic_names') || '');
+    await saveCustomTopicName(tid, tname);
+    syncToBridge('telegram_custom_topic_names', localStorage.getItem('studydock_telegram_custom_names') || '');
 
     const updated = applyCustomNamesToFolders();
     if (onTelegramFoldersUpdated) onTelegramFoldersUpdated(updated);
-    syncToBridge('telegram_synced_data', localStorage.getItem('telegram_synced_data') || '');
+    syncToBridge('telegram_synced_data', localStorage.getItem('studydock_telegram_data') || '');
 
     refreshTopicState();
     setNewThreadId('');
@@ -277,13 +277,13 @@ export default function AdminPage({
     setTimeout(() => setTopicSaveStatus(''), 2000);
   };
 
-  const handleDeleteTopicName = (threadId) => {
-    deleteCustomTopicName(threadId);
-    syncToBridge('telegram_custom_topic_names', localStorage.getItem('telegram_custom_topic_names') || '');
+  const handleDeleteTopicName = async (threadId) => {
+    await deleteCustomTopicName(threadId);
+    syncToBridge('telegram_custom_topic_names', localStorage.getItem('studydock_telegram_custom_names') || '');
 
     const updated = applyCustomNamesToFolders();
     if (onTelegramFoldersUpdated) onTelegramFoldersUpdated(updated);
-    syncToBridge('telegram_synced_data', localStorage.getItem('telegram_synced_data') || '');
+    syncToBridge('telegram_synced_data', localStorage.getItem('studydock_telegram_data') || '');
 
     refreshTopicState();
   };
@@ -295,10 +295,10 @@ export default function AdminPage({
   };
 
   // ── Exam Schedule ──────────────────────────────────────────────────────────
-  const handleExamSubmit = (e) => {
+  const handleExamSubmit = async (e) => {
     e.preventDefault();
     if (!examSubject.trim() || !examDate) return;
-    const updated = onSaveExam({
+    const updated = await onSaveExam({
       subject: examSubject.trim(),
       date: examDate,
       time: examTime.trim(),
@@ -314,8 +314,8 @@ export default function AdminPage({
     setTimeout(() => setExamSaveStatus(''), 3000);
   };
 
-  const handleDeleteExam = (id) => {
-    const updated = onDeleteExam(id);
+  const handleDeleteExam = async (id) => {
+    const updated = await onDeleteExam(id);
     syncToBridge('studydock_exams', JSON.stringify(updated || []));
   };
 

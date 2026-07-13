@@ -13,43 +13,92 @@ import TelegramSetup from './components/telegram/TelegramSetup';
 import TelegramManager from './components/telegram/TelegramManager';
 import ExamCalendar from './components/calendar/ExamCalendar';
 import AnnouncementPage from './components/announcement/AnnouncementPage';
-import { API_KEY, DEFAULT_FOLDERS } from './config/drive';
+import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey } from './config/drive';
 import { getTelegramConfig, saveTelegramConfig, clearTelegramConfig } from './services/telegramService';
-import { getExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage } from './services/examService';
+import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage, subscribeToExams } from './services/examService';
+import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
+import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings } from './services/settingsService';
+import { loadAppData } from './services/dataService';
+import { isSupabaseConfigured } from './lib/supabase';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
 const EXAMS_BROADCAST_CHANNEL = 'studydock_exams_sync';
 
 export default function App() {
-  const [localApiKey, setLocalApiKey] = useState(() => {
-    return localStorage.getItem(STORAGE_API_KEY) || '';
-  });
+  const [bootState, setBootState] = useState({ loading: true, error: null, data: null });
+  const [localApiKey, setLocalApiKey] = useState('');
 
-  const hasApiKey = !!(API_KEY || localApiKey);
+  useEffect(() => {
+    let cancelled = false;
 
-  const handleApiKeySubmit = useCallback((key) => {
+    loadAppData()
+      .then((data) => {
+        if (cancelled) return;
+        setLocalApiKey(data.settings.googleApiKey || '');
+        setBootState({ loading: false, error: null, data });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load app data:', err);
+        setLocalApiKey(getApiKey());
+        setBootState({
+          loading: false,
+          error: err.message,
+          data: {
+            exams: [],
+            folders: DEFAULT_FOLDERS,
+            settings: { googleApiKey: getApiKey(), telegram: { token: '', chatId: '' } },
+            useLocalOnly: true,
+          },
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleApiKeySubmit = useCallback(async (key) => {
     localStorage.setItem(STORAGE_API_KEY, key);
+    setRuntimeApiKey(key);
     setLocalApiKey(key);
+    if (isSupabaseConfigured()) {
+      await saveGoogleApiKey(key);
+    }
     window.location.reload();
   }, []);
+
+  if (bootState.loading) {
+    return (
+      <div className="setup-screen">
+        <div className="setup-logo">StudyDock</div>
+        <div className="setup-card" style={{ textAlign: 'center' }}>
+          <div className="pdf-loading-spinner" style={{ margin: '0 auto 16px', borderTopColor: 'var(--accent)' }} />
+          <p>Loading from database...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const effectiveApiKey = import.meta.env.VITE_GOOGLE_API_KEY || localApiKey;
+  const hasApiKey = !!effectiveApiKey;
 
   if (!hasApiKey) {
     return <ApiKeySetup onKeySubmit={handleApiKeySubmit} />;
   }
 
-  return <AppMain localApiKey={localApiKey} onSaveApiKey={handleApiKeySubmit} />;
+  return (
+    <AppMain
+      initialData={bootState.data}
+      localApiKey={effectiveApiKey}
+      onSaveApiKey={handleApiKeySubmit}
+    />
+  );
 }
 
-function AppMain({ localApiKey, onSaveApiKey }) {
-  const [foldersList, setFoldersList] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_FOLDERS_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_FOLDERS;
-    } catch {
-      return DEFAULT_FOLDERS;
-    }
-  });
+function AppMain({ initialData, localApiKey, onSaveApiKey }) {
+  const [foldersList, setFoldersList] = useState(() => initialData?.folders || DEFAULT_FOLDERS);
 
   const [selectedRootFolder, setSelectedRootFolder] = useState(() => {
     try {
@@ -65,22 +114,55 @@ function AppMain({ localApiKey, onSaveApiKey }) {
     return localStorage.getItem('studydock_active_tab') || 'calendar';
   });
 
-  const [tgConfig, setTgConfig] = useState(() => getTelegramConfig());
+  const [tgConfig, setTgConfig] = useState(() => {
+    if (initialData?.settings?.telegram?.chatId || initialData?.settings?.telegram?.token) {
+      return initialData.settings.telegram;
+    }
+    return getTelegramConfig();
+  });
 
-  // ── Exam state — single source of truth shared between AdminPage and ExamCalendar ──
-  const [examsList, setExamsList] = useState(() => getExams());
+  const [examsList, setExamsList] = useState(() => initialData?.exams || []);
+
+  // Supabase realtime + cross-tab sync
+  useEffect(() => {
+    const reloadExams = () => {
+      fetchExams().then(setExamsList).catch(console.error);
+    };
+    const reloadFolders = () => {
+      fetchFolders().then(setFoldersList).catch(console.error);
+    };
+    const reloadSettings = async () => {
+      try {
+        const settings = await fetchAppSettings();
+        if (settings.telegram) setTgConfig(settings.telegram);
+        if (settings.googleApiKey) setRuntimeApiKey(settings.googleApiKey);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const unsubExams = subscribeToExams(reloadExams);
+    const unsubFolders = subscribeToFolders(reloadFolders);
+    const unsubSettings = subscribeToSettings(reloadSettings);
+
+    return () => {
+      unsubExams();
+      unsubFolders();
+      unsubSettings();
+    };
+  }, []);
 
   // BroadcastChannel: sync exam changes across all open tabs in real-time
   useEffect(() => {
     const channel = new BroadcastChannel(EXAMS_BROADCAST_CHANNEL);
     channel.onmessage = (e) => {
       if (e.data?.type === 'exams_updated') {
-        setExamsList(getExams());
+        fetchExams().then(setExamsList).catch(console.error);
       }
     };
     // Also listen to storage events (covers cross-tab from non-BroadcastChannel sources)
     const onStorage = (e) => {
-      if (e.key === 'studydock_exams') setExamsList(getExams());
+      if (e.key === 'studydock_exams') fetchExams().then(setExamsList).catch(console.error);
     };
     window.addEventListener('storage', onStorage);
     return () => {
@@ -89,18 +171,16 @@ function AppMain({ localApiKey, onSaveApiKey }) {
     };
   }, []);
 
-  const handleSaveExam = useCallback((examData) => {
-    const updated = saveExamToStorage(examData);
+  const handleSaveExam = useCallback(async (examData) => {
+    const updated = await saveExamToStorage(examData);
     setExamsList(updated);
-    // Notify all other open tabs
     try { new BroadcastChannel(EXAMS_BROADCAST_CHANNEL).postMessage({ type: 'exams_updated' }); } catch (_) {}
     return updated;
   }, []);
 
-  const handleDeleteExam = useCallback((id) => {
-    const updated = deleteExamFromStorage(id);
+  const handleDeleteExam = useCallback(async (id) => {
+    const updated = await deleteExamFromStorage(id);
     setExamsList(updated);
-    // Notify all other open tabs
     try { new BroadcastChannel(EXAMS_BROADCAST_CHANNEL).postMessage({ type: 'exams_updated' }); } catch (_) {}
     return updated;
   }, []);
@@ -116,9 +196,14 @@ function AppMain({ localApiKey, onSaveApiKey }) {
     return sessionStorage.getItem('studydock_admin_authenticated') === 'true';
   });
 
-  const handleSaveFolders = (updatedFolders) => {
+  const handleSaveFolders = async (updatedFolders) => {
     setFoldersList(updatedFolders);
-    localStorage.setItem(STORAGE_FOLDERS_KEY, JSON.stringify(updatedFolders));
+    try {
+      await saveAllFolders(updatedFolders);
+    } catch (err) {
+      console.error('Failed to save folders:', err);
+      localStorage.setItem(STORAGE_FOLDERS_KEY, JSON.stringify(updatedFolders));
+    }
   };
 
   const handleSelectRootFolder = (folder) => {
@@ -145,19 +230,21 @@ function AppMain({ localApiKey, onSaveApiKey }) {
 
   // Sync calendar reload
   useEffect(() => {
-    registerRefreshCallback('calendar', () => {
-      setExamsList(getExams());
+    registerRefreshCallback('calendar', async () => {
+      const exams = await fetchExams();
+      setExamsList(exams);
       return new Promise(resolve => setTimeout(resolve, 800));
     });
   }, [registerRefreshCallback]);
 
-  // Sync folder configuration list reload
   useEffect(() => {
-    registerRefreshCallback('files-root', () => {
+    registerRefreshCallback('files-root', async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_FOLDERS_KEY);
-        setFoldersList(stored ? JSON.parse(stored) : DEFAULT_FOLDERS);
-      } catch (err) {}
+        const folders = await fetchFolders();
+        setFoldersList(folders);
+      } catch (err) {
+        console.error(err);
+      }
       return new Promise(resolve => setTimeout(resolve, 600));
     });
   }, [registerRefreshCallback]);
@@ -261,15 +348,21 @@ function AppMain({ localApiKey, onSaveApiKey }) {
 
   const [tgRefreshKey, setTgRefreshKey] = React.useState(0);
 
-  const handleSaveTelegramConfig = (token, chatId) => {
+  const handleSaveTelegramConfig = async (token, chatId) => {
     saveTelegramConfig(token, chatId);
     setTgConfig({ token, chatId });
+    if (isSupabaseConfigured()) {
+      await saveTelegramSettings(token, chatId);
+    }
   };
 
-  const handleClearTelegramConfig = () => {
+  const handleClearTelegramConfig = async () => {
     clearTelegramConfig();
     setTgConfig({ token: '', chatId: '' });
     setTgRefreshKey(k => k + 1);
+    if (isSupabaseConfigured()) {
+      await clearTelegramSettings();
+    }
   };
 
   const handleTelegramFoldersUpdated = () => {
@@ -367,7 +460,7 @@ function AppMain({ localApiKey, onSaveApiKey }) {
         <AdminPage
           foldersList={foldersList}
           onSaveFolders={handleSaveFolders}
-          apiKey={API_KEY || localApiKey}
+          apiKey={localApiKey}
           onSaveApiKey={onSaveApiKey}
           telegramConfig={tgConfig}
           onSaveTelegramConfig={handleSaveTelegramConfig}
@@ -437,6 +530,7 @@ function AppMain({ localApiKey, onSaveApiKey }) {
       <FileManagerContainer
         key={selectedRootFolder.id}
         folder={selectedRootFolder}
+        apiKey={localApiKey}
         onNavigateBack={() => {
           setSelectedRootFolder(null);
           localStorage.removeItem('studydock_selected_folder');

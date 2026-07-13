@@ -8,6 +8,7 @@ export default function FileManagerContainer({
   onNavigateBack,
   onOpenFile,
   onRegisterRefresh,
+  apiKey,
 }) {
   // Hook is initialized fresh because this component is keyed by folder.id in App.jsx
   const {
@@ -22,7 +23,7 @@ export default function FileManagerContainer({
     folderCounts,
     lastUpdated,
     refresh,
-  } = useDriveFolder(folder.folderId, folder.name);
+  } = useDriveFolder(folder.folderId, folder.name, apiKey);
 
   // Register the drive refresh function with the parent pull-to-refresh system
   useEffect(() => {

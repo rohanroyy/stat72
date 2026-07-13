@@ -22,8 +22,8 @@ export default function ApiKeySetup({ onKeySubmit }) {
       <div className="setup-card">
         <h2>Connect Google Drive</h2>
         <p>
-          Enter your Google API key to browse your Drive files directly in StudyDock.
-          The key is stored locally in your browser — never sent anywhere else.
+          Enter your Google API key to browse Drive files in StudyDock.
+          When Supabase is configured, the key is stored in the shared database for all users.
         </p>
 
         <form onSubmit={handleSubmit}>

@@ -28,8 +28,15 @@ export function extractFolderId(input) {
   return trimmed;
 }
 
-// Google API Key — reads from env or local storage
-function getApiKey() {
+// Google API Key — reads from env, runtime override, or local storage
+let runtimeApiKey = '';
+
+export function setRuntimeApiKey(key) {
+  runtimeApiKey = key || '';
+}
+
+export function getApiKey() {
+  if (runtimeApiKey) return runtimeApiKey;
   const envKey = import.meta.env.VITE_GOOGLE_API_KEY;
   if (envKey) return envKey;
   try {
@@ -39,6 +46,7 @@ function getApiKey() {
   }
 }
 
+/** @deprecated Use getApiKey() — kept for existing imports */
 export const API_KEY = getApiKey();
 export const POLL_INTERVAL = 30_000;
 export const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';

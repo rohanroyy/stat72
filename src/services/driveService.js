@@ -1,4 +1,4 @@
-import { API_KEY, DRIVE_API_BASE } from '../config/drive';
+import { getApiKey, DRIVE_API_BASE } from '../config/drive';
 
 /**
  * File type categories mapped from MIME types
@@ -95,8 +95,9 @@ export function getExtension(filename) {
 /**
  * List all files and folders in a Drive folder
  */
-export async function listFolder(folderId) {
-  if (!API_KEY) {
+export async function listFolder(folderId, apiKey) {
+  const key = apiKey || getApiKey();
+  if (!key) {
     throw new Error('NO_API_KEY');
   }
 
@@ -104,7 +105,7 @@ export async function listFolder(folderId) {
   const query = `'${folderId}' in parents and trashed = false`;
   const orderBy = 'folder,name';
 
-  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&orderBy=${encodeURIComponent(orderBy)}&pageSize=1000&key=${API_KEY}`;
+  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&orderBy=${encodeURIComponent(orderBy)}&pageSize=1000&key=${key}`;
 
   const response = await fetch(url);
 
@@ -182,11 +183,12 @@ export function getThumbnailUrl(thumbnailLink, size = 400) {
 /**
  * Count files in a folder (quick count, separate API call)
  */
-export async function countFolderItems(folderId) {
-  if (!API_KEY) return 0;
+export async function countFolderItems(folderId, apiKey) {
+  const key = apiKey || getApiKey();
+  if (!key) return 0;
 
   const query = `'${folderId}' in parents and trashed = false`;
-  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)&pageSize=1000&key=${API_KEY}`;
+  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)&pageSize=1000&key=${key}`;
 
   try {
     const response = await fetch(url);

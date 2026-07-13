@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { listFolder, countFolderItems } from '../services/driveService';
 import { POLL_INTERVAL } from '../config/drive';
-export function useDriveFolder(initialFolderId, initialFolderName = 'Root') {
+export function useDriveFolder(initialFolderId, initialFolderName = 'Root', apiKey) {
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,7 @@ export function useDriveFolder(initialFolderId, initialFolderName = 'Root') {
       if (showLoading) setLoading(true);
       setError(null);
 
-      const result = await listFolder(folderId);
+      const result = await listFolder(folderId, apiKey);
 
       if (!isMountedRef.current) return;
 
@@ -42,7 +42,7 @@ export function useDriveFolder(initialFolderId, initialFolderName = 'Root') {
       const counts = {};
       await Promise.all(
         result.folders.map(async (folder) => {
-          counts[folder.id] = await countFolderItems(folder.id);
+          counts[folder.id] = await countFolderItems(folder.id, apiKey);
         })
       );
 
@@ -54,7 +54,7 @@ export function useDriveFolder(initialFolderId, initialFolderName = 'Root') {
       setError(err.message);
       setLoading(false);
     }
-  }, []);
+  }, [apiKey]);
 
   // Initial fetch + polling
   useEffect(() => {
