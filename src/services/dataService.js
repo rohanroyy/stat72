@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, checkSupabaseConnection } from '../lib/supabase';
 import { migrateExamsFromLocalStorage, fetchExams, getExams } from './examService';
 import { migrateFoldersFromLocalStorage, fetchFolders } from './foldersService';
 import { migrateSettingsFromLocalStorage, fetchAppSettings } from './settingsService';
@@ -51,6 +51,11 @@ export async function loadAppData() {
       },
       useLocalOnly: true,
     };
+  }
+
+  const connection = await checkSupabaseConnection();
+  if (!connection.ok) {
+    throw new Error(connection.message);
   }
 
   await Promise.all([

@@ -159,7 +159,7 @@ export default function AdminPage({
   }, [telegramConfig?.chatId, bridgeReady]);
 
   // ── Drive Folders ─────────────────────────────────────────────────────────
-  const handleFolderSubmit = (e) => {
+  const handleFolderSubmit = async (e) => {
     e.preventDefault();
     const name = folderName.trim();
     const link = folderLink.trim();
@@ -188,11 +188,15 @@ export default function AdminPage({
       };
       updated = [...foldersList, newFolder];
     }
-    onSaveFolders(updated);
-    syncToBridge('studydock_configured_folders', JSON.stringify(updated));
 
-    setFolderName('');
-    setFolderLink('');
+    try {
+      await onSaveFolders(updated);
+      syncToBridge('studydock_configured_folders', JSON.stringify(updated));
+      setFolderName('');
+      setFolderLink('');
+    } catch (err) {
+      alert(`Failed to save folder: ${err.message}`);
+    }
   };
 
   const handleEditInit = (folder) => {
@@ -201,11 +205,15 @@ export default function AdminPage({
     setFolderLink(folder.driveLink || folder.folderId);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Delete this drive folder link?')) {
       const updated = foldersList.filter((f) => f.id !== id);
-      onSaveFolders(updated);
-      syncToBridge('studydock_configured_folders', JSON.stringify(updated));
+      try {
+        await onSaveFolders(updated);
+        syncToBridge('studydock_configured_folders', JSON.stringify(updated));
+      } catch (err) {
+        alert(`Failed to delete folder: ${err.message}`);
+      }
     }
   };
 
@@ -216,25 +224,35 @@ export default function AdminPage({
   };
 
   // ── API Key ───────────────────────────────────────────────────────────────
-  const handleApiKeySubmit = (e) => {
+  const handleApiKeySubmit = async (e) => {
     e.preventDefault();
     const trimmed = newApiKey.trim();
-    onSaveApiKey(trimmed);
-    syncToBridge('studydock_api_key', trimmed);
-    setApiSaveStatus('Saved!');
-    setTimeout(() => setApiSaveStatus(''), 2000);
+    try {
+      await onSaveApiKey(trimmed);
+      syncToBridge('studydock_api_key', trimmed);
+      setApiSaveStatus('Saved to database!');
+      setTimeout(() => setApiSaveStatus(''), 2000);
+    } catch (err) {
+      setApiSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setApiSaveStatus(''), 4000);
+    }
   };
 
   // ── Telegram Config ───────────────────────────────────────────────────────
-  const handleTelegramSubmit = (e) => {
+  const handleTelegramSubmit = async (e) => {
     e.preventDefault();
     const token = newTgToken.trim();
     const chatId = newTgChatId.trim();
-    onSaveTelegramConfig(token, chatId);
-    syncToBridge('telegram_token_key', token);
-    syncToBridge('telegram_chat_id_key', chatId);
-    setTgSaveStatus('Saved Telegram Config!');
-    setTimeout(() => setTgSaveStatus(''), 2000);
+    try {
+      await onSaveTelegramConfig(token, chatId);
+      syncToBridge('telegram_token_key', token);
+      syncToBridge('telegram_chat_id_key', chatId);
+      setTgSaveStatus('Saved to database!');
+      setTimeout(() => setTgSaveStatus(''), 2000);
+    } catch (err) {
+      setTgSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setTgSaveStatus(''), 4000);
+    }
   };
 
   const handleResetTelegram = () => {
@@ -298,25 +316,34 @@ export default function AdminPage({
   const handleExamSubmit = async (e) => {
     e.preventDefault();
     if (!examSubject.trim() || !examDate) return;
-    const updated = await onSaveExam({
-      subject: examSubject.trim(),
-      date: examDate,
-      time: examTime.trim(),
-      duration: examDuration.trim(),
-      room: examRoom.trim(),
-      notes: examNotes.trim(),
-    });
-    syncToBridge('studydock_exams', JSON.stringify(updated || []));
+    try {
+      const updated = await onSaveExam({
+        subject: examSubject.trim(),
+        date: examDate,
+        time: examTime.trim(),
+        duration: examDuration.trim(),
+        room: examRoom.trim(),
+        notes: examNotes.trim(),
+      });
+      syncToBridge('studydock_exams', JSON.stringify(updated || []));
 
-    setExamSubject(''); setExamDate(''); setExamTime('');
-    setExamDuration(''); setExamRoom(''); setExamNotes('');
-    setExamSaveStatus('Exam saved & published to calendar!');
-    setTimeout(() => setExamSaveStatus(''), 3000);
+      setExamSubject(''); setExamDate(''); setExamTime('');
+      setExamDuration(''); setExamRoom(''); setExamNotes('');
+      setExamSaveStatus('Exam saved to database!');
+      setTimeout(() => setExamSaveStatus(''), 3000);
+    } catch (err) {
+      setExamSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setExamSaveStatus(''), 5000);
+    }
   };
 
   const handleDeleteExam = async (id) => {
-    const updated = await onDeleteExam(id);
-    syncToBridge('studydock_exams', JSON.stringify(updated || []));
+    try {
+      const updated = await onDeleteExam(id);
+      syncToBridge('studydock_exams', JSON.stringify(updated || []));
+    } catch (err) {
+      alert(`Failed to delete exam: ${err.message}`);
+    }
   };
 
   return (
@@ -384,7 +411,11 @@ export default function AdminPage({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button type="submit" className="admin-btn">Save API Key</button>
-            {apiSaveStatus && <span className="caption" style={{ color: 'var(--gold-600)' }}>{apiSaveStatus}</span>}
+            {apiSaveStatus && (
+              <span className="caption" style={{ color: apiSaveStatus.startsWith('Error:') ? 'var(--accent)' : 'var(--gold-600)' }}>
+                {apiSaveStatus}
+              </span>
+            )}
           </div>
         </form>
       </section>
@@ -430,7 +461,11 @@ export default function AdminPage({
             <button type="button" className="admin-btn admin-btn-secondary" onClick={handleResetTelegram}>
               Reset Sync
             </button>
-            {tgSaveStatus && <span className="caption" style={{ color: 'var(--gold-600)' }}>{tgSaveStatus}</span>}
+            {tgSaveStatus && (
+              <span className="caption" style={{ color: tgSaveStatus.startsWith('Error:') ? 'var(--accent)' : 'var(--gold-600)' }}>
+                {tgSaveStatus}
+              </span>
+            )}
           </div>
         </form>
       </section>

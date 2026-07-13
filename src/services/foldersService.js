@@ -43,8 +43,11 @@ export async function fetchFolders() {
     .select('*')
     .order('sort_order', { ascending: true });
 
-  if (error) throw error;
-  return (data || []).map(rowToFolder);
+  if (error) throw new Error(error.message);
+
+  const folders = (data || []).map(rowToFolder);
+  writeLocalFolders(folders);
+  return folders;
 }
 
 export async function saveAllFolders(folders) {
@@ -54,16 +57,32 @@ export async function saveAllFolders(folders) {
 
   const rows = folders.map((folder, index) => folderToRow(folder, index));
 
-  const { error: deleteError } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from('drive_folders')
-    .delete()
-    .neq('id', '');
+    .select('id');
 
-  if (deleteError) throw deleteError;
+  if (fetchError) throw new Error(fetchError.message);
+
+  const newIds = new Set(rows.map((row) => row.id));
+  const idsToDelete = (existing || [])
+    .map((row) => row.id)
+    .filter((id) => !newIds.has(id));
+
+  if (idsToDelete.length) {
+    const { error: deleteError } = await supabase
+      .from('drive_folders')
+      .delete()
+      .in('id', idsToDelete);
+
+    if (deleteError) throw new Error(deleteError.message);
+  }
 
   if (rows.length) {
-    const { error: insertError } = await supabase.from('drive_folders').insert(rows);
-    if (insertError) throw insertError;
+    const { error: upsertError } = await supabase
+      .from('drive_folders')
+      .upsert(rows, { onConflict: 'id' });
+
+    if (upsertError) throw new Error(upsertError.message);
   }
 
   return folders;
@@ -76,7 +95,7 @@ export async function migrateFoldersFromLocalStorage() {
     .from('drive_folders')
     .select('*', { count: 'exact', head: true });
 
-  if (countError) throw countError;
+  if (countError) throw new Error(countError.message);
   if (count > 0) return;
 
   const local = readLocalFolders();

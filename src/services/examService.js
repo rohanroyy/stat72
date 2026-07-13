@@ -58,7 +58,7 @@ export async function fetchExams() {
     .select('*')
     .order('date', { ascending: true });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   const exams = sortExams((data || []).map(rowToExam));
   writeLocalExams(exams);
   return exams;
@@ -78,7 +78,7 @@ export async function saveExam(exam) {
   }
 
   const { error } = await supabase.from('exams').upsert(examToRow(payload), { onConflict: 'id' });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 
   return fetchExams();
 }
@@ -91,7 +91,7 @@ export async function deleteExam(id) {
   }
 
   const { error } = await supabase.from('exams').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 
   return fetchExams();
 }
@@ -111,7 +111,7 @@ export async function migrateExamsFromLocalStorage() {
     .from('exams')
     .select('*', { count: 'exact', head: true });
 
-  if (countError) throw countError;
+  if (countError) throw new Error(countError.message);
   if (count > 0) return;
 
   const local = readLocalExams();
@@ -119,7 +119,7 @@ export async function migrateExamsFromLocalStorage() {
 
   const rows = local.map(examToRow);
   const { error } = await supabase.from('exams').insert(rows);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export function subscribeToExams(onChange) {

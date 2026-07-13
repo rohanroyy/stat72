@@ -28,7 +28,7 @@ export async function fetchSetting(key) {
     .eq('key', key)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return rowToValue(data);
 }
 
@@ -42,7 +42,7 @@ export async function saveSetting(key, value) {
       { onConflict: 'key' }
     );
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchAppSettings() {
@@ -55,7 +55,7 @@ export async function fetchAppSettings() {
   }
 
   const { data, error } = await supabase.from('app_settings').select('key, value');
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 
   const map = Object.fromEntries((data || []).map((row) => [row.key, rowToValue(row)]));
 
@@ -89,7 +89,7 @@ export async function migrateSettingsFromLocalStorage() {
     .from('app_settings')
     .select('*', { count: 'exact', head: true });
 
-  if (countError) throw countError;
+  if (countError) throw new Error(countError.message);
   if (count > 0) return;
 
   const apiKey = localStorage.getItem('studydock_api_key') || '';
@@ -113,7 +113,7 @@ export async function migrateSettingsFromLocalStorage() {
   if (!upserts.length) return;
 
   const { error } = await supabase.from('app_settings').upsert(upserts, { onConflict: 'key' });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export function subscribeToSettings(onChange) {

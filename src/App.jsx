@@ -81,6 +81,30 @@ export default function App() {
     );
   }
 
+  if (bootState.error && isSupabaseConfigured()) {
+    return (
+      <div className="setup-screen">
+        <div className="setup-logo">StudyDock</div>
+        <div className="setup-card">
+          <h2>Database Connection Failed</h2>
+          <p style={{ color: 'var(--accent)', marginTop: '12px' }}>{bootState.error}</p>
+          <p style={{ marginTop: '16px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Check that <code>VITE_SUPABASE_URL</code> matches your project (Settings → API in Supabase)
+            and that you ran <code>supabase/schema.sql</code> in the SQL Editor.
+          </p>
+          <button
+            type="button"
+            className="setup-submit"
+            style={{ marginTop: '20px' }}
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const effectiveApiKey = import.meta.env.VITE_GOOGLE_API_KEY || localApiKey;
   const hasApiKey = !!effectiveApiKey;
 
@@ -198,12 +222,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   const handleSaveFolders = async (updatedFolders) => {
     setFoldersList(updatedFolders);
-    try {
-      await saveAllFolders(updatedFolders);
-    } catch (err) {
-      console.error('Failed to save folders:', err);
-      localStorage.setItem(STORAGE_FOLDERS_KEY, JSON.stringify(updatedFolders));
-    }
+    await saveAllFolders(updatedFolders);
   };
 
   const handleSelectRootFolder = (folder) => {
@@ -359,7 +378,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   const handleClearTelegramConfig = async () => {
     clearTelegramConfig();
     setTgConfig({ token: '', chatId: '' });
-    setTgRefreshKey(k => k + 1);
+    setTgRefreshKey((k) => k + 1);
     if (isSupabaseConfigured()) {
       await clearTelegramSettings();
     }
