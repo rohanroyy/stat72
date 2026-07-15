@@ -17,11 +17,11 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png'],
+      includeAssets: ['/favicon.png'],
       manifest: {
         name: 'Bahattor',
         short_name: 'Bahattor',
-        description: 'ব্যাচ ৭২-এর কমন রুম',
+        description: 'ব্যাচ ৭২ এর কমন রুম',
         theme_color: '#E8472B',
         background_color: '#111111',
         display: 'standalone',
@@ -30,19 +30,19 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'favicon.png',
+            src: '/favicon.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: 'favicon.png',
+            src: '/favicon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: 'favicon.png',
+            src: '/favicon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
