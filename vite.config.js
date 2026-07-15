@@ -19,9 +19,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png'],
       manifest: {
-        name: 'StudyDock',
-        short_name: 'StudyDock',
-        description: 'Student control room — file manager, Telegram sync, and exam schedule.',
+        name: 'Bahattor',
+        short_name: 'Bahattor',
+        description: 'ব্যাচ ৭২-এর কমন রুম',
         theme_color: '#E8472B',
         background_color: '#111111',
         display: 'standalone',
