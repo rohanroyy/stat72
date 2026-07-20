@@ -286,7 +286,7 @@ export default function Register({ onRegisterSuccess, onGoToLogin }) {
                 type="text"
                 value={formData.regNum}
                 onChange={handleChange}
-                placeholder="e.g. 2021123456"
+                placeholder="eg: 2022123123"
                 required
                 disabled={loading}
               />
@@ -302,7 +302,7 @@ export default function Register({ onRegisterSuccess, onGoToLogin }) {
                 type="text"
                 value={formData.session}
                 onChange={handleChange}
-                placeholder="e.g. 2021-22"
+                placeholder="eg: 2022-23"
                 required
                 disabled={loading}
               />

@@ -103,7 +103,6 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
 
       <div className="setup-card glassmorphic-auth">
         <h2>Student Login</h2>
-        <p>Enter your registration number and password to access your dashboard.</p>
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -118,7 +117,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
               type="text"
               value={regNum}
               onChange={(e) => setRegNum(e.target.value)}
-              placeholder="e.g. 2021-123-456"
+              placeholder="eg: 2022123123"
               required
               disabled={loading}
             />

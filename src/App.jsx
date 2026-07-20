@@ -159,19 +159,31 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     if (!isSupabaseConfigured()) return;
 
     async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Fetch student details
-        const { data: student } = await supabase
-          .from('students')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Fetch student details
+          const { data: student, error } = await supabase
+            .from('students')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
 
-        if (student) {
-          setCurrentUser(student);
-          localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
+          if (error) throw error;
+
+          if (student) {
+            setCurrentUser(student);
+            localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
+          } else {
+            setCurrentUser(null);
+            localStorage.removeItem('bahattor_logged_in_student');
+          }
+        } else {
+          setCurrentUser(null);
+          localStorage.removeItem('bahattor_logged_in_student');
         }
+      } catch (err) {
+        console.error('Session check failed:', err);
       }
     }
     checkAuth();
@@ -181,12 +193,14 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     setCurrentUser(student);
     setActiveTab('dashboard');
     localStorage.setItem('studydock_active_tab', 'dashboard');
+    localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
   };
 
   const handleRegisterSuccess = (student) => {
     setCurrentUser(student);
     setActiveTab('dashboard');
     localStorage.setItem('studydock_active_tab', 'dashboard');
+    localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
   };
 
   const handleLogout = async () => {
@@ -200,6 +214,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   const handleProfileUpdate = (updatedStudent) => {
     setCurrentUser(updatedStudent);
+    localStorage.setItem('bahattor_logged_in_student', JSON.stringify(updatedStudent));
   };
 
   const [tgConfig, setTgConfig] = useState(() => {

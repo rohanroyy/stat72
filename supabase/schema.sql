@@ -105,7 +105,7 @@ DROP POLICY IF EXISTS "students_update_own" ON students;
 
 CREATE POLICY "students_select_all" ON students FOR SELECT USING (true);
 CREATE POLICY "students_insert_own" ON students FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "students_update_own" ON students FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "students_update_own" ON students FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- Migration: add profile_picture column if it does not already exist
 -- Run this if you already created the students table before this update:

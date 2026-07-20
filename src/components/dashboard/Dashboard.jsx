@@ -72,11 +72,23 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
   const persistStudentUpdate = async (updatedFields) => {
     if (isSupabaseConfigured()) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('students')
         .update(updatedFields)
-        .eq('id', student.id);
-      if (error) throw error;
+        .eq('id', student.id)
+        .select();
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Database update failed: No rows were updated. This usually happens if your Supabase Row Level Security (RLS) policies are misconfigured or your login session has expired. Please run the SQL queries in 'supabase/schema.sql' to configure RLS, or try logging out and logging back in."
+        );
+      }
+
       // Keep localStorage in sync so page refresh shows fresh data
       const merged = { ...student, ...updatedFields };
       localStorage.setItem('bahattor_logged_in_student', JSON.stringify(merged));
@@ -269,20 +281,15 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             <h2 className="dash-name">{student.name}</h2>
             <p className="dash-meta">Roll: <strong>{student.class_roll}</strong></p>
             <p className="dash-meta">Reg: <strong>{student.registration_number}</strong></p>
+            <button
+              className="dash-view-profile-text-btn"
+              onClick={() => { setIsEditing(false); setEditForm({ ...student }); setShowProfileModal(true); }}
+            >
+              View Profile
+            </button>
           </div>
         </div>
         <div className="dash-header-right">
-          <button
-            className="dash-view-profile-btn"
-            onClick={() => { setIsEditing(false); setEditForm({ ...student }); setShowProfileModal(true); }}
-            title="View Profile"
-            aria-label="View Profile"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </button>
           <button
             className="dash-logout-btn"
             onClick={onLogout}
