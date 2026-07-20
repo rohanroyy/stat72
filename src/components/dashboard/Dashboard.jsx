@@ -9,9 +9,8 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   const [editError, setEditError] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
 
-  const [moodChoices, setMoodChoices] = useState(['😊 Happy', '😴 Tired', '🔥 Motivated', '📚 Study Mode', '🤯 Stressed']);
-  const [moodDropdownOpen, setMoodDropdownOpen] = useState(false);
-  const moodDropdownRef = useRef(null);
+  const [moodInput, setMoodInput] = useState('');
+  const [moodEditing, setMoodEditing] = useState(false);
 
   const [profilePic, setProfilePic] = useState(() => {
     if (initialStudent?.profile_picture) return initialStudent.profile_picture;
@@ -31,44 +30,6 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
       setProfilePic(initialStudent.profile_picture);
     }
   }, [initialStudent]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadMoodChoices() {
-      try {
-        if (isSupabaseConfigured()) {
-          const { data } = await supabase
-            .from('app_settings')
-            .select('value')
-            .eq('key', 'mood_choices')
-            .maybeSingle();
-          if (data?.value && Array.isArray(data.value.choices) && active) {
-            setMoodChoices(data.value.choices);
-          }
-        } else {
-          const stored = localStorage.getItem('bahattor_mood_choices');
-          if (stored && active) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) setMoodChoices(parsed);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load mood choices:', err);
-      }
-    }
-    loadMoodChoices();
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (moodDropdownRef.current && !moodDropdownRef.current.contains(e.target)) {
-        setMoodDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const persistStudentUpdate = async (updatedFields) => {
     if (isSupabaseConfigured()) {
@@ -104,17 +65,17 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     }
   };
 
-  const handleMoodSelect = async (moodValue) => {
-    setMoodDropdownOpen(false);
-    const updatedFields = {
-      mood: moodValue,
-      mood_selected_at: new Date().toISOString()
-    };
+  const handleMoodSave = async () => {
+    const trimmed = moodInput.trim().slice(0, 30);
+    if (!trimmed) return;
+    const updatedFields = { mood: trimmed, mood_selected_at: new Date().toISOString() };
     try {
       await persistStudentUpdate(updatedFields);
       const updated = { ...student, ...updatedFields };
       setStudent(updated);
       onProfileUpdate(updated);
+      setMoodInput('');
+      setMoodEditing(false);
     } catch (err) {
       console.error('Failed to save mood:', err);
     }
@@ -127,6 +88,8 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
       const updated = { ...student, ...updatedFields };
       setStudent(updated);
       onProfileUpdate(updated);
+      setMoodInput('');
+      setMoodEditing(false);
     } catch (err) {
       console.error('Failed to clear mood:', err);
     }
@@ -317,32 +280,37 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         <div className="dash-card dash-card-mood">
           <div className="mood-header">
             <span className="dash-card-section-label">Mood</span>
-            {student.mood && (
-              <button className="mood-change-btn" onClick={handleClearMood}>Change</button>
+            {student.mood && !moodEditing && (
+              <div className="mood-actions-row">
+                <button className="mood-change-btn" onClick={() => { setMoodInput(student.mood); setMoodEditing(true); }}>Edit</button>
+                <button className="mood-change-btn mood-remove-btn" onClick={handleClearMood}>Remove</button>
+              </div>
             )}
           </div>
-          {student.mood ? (
+          {student.mood && !moodEditing ? (
             <div className="mood-selected-display">
               <span className="mood-selected-text">{student.mood}</span>
             </div>
           ) : (
-            <div className="mood-picker-wrapper" ref={moodDropdownRef}>
-              <button className="mood-dropdown-trigger" onClick={() => setMoodDropdownOpen(o => !o)}>
-                <span>How are you feeling?</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: moodDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', flexShrink: 0 }}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {moodDropdownOpen && (
-                <div className="mood-dropdown-menu">
-                  {moodChoices.map((mood, idx) => (
-                    <button key={idx} className="mood-dropdown-item" onClick={() => handleMoodSelect(mood)}>
-                      {mood}
-                    </button>
-                  ))}
+            <div className="mood-input-wrapper">
+              <input
+                className="mood-text-input"
+                type="text"
+                placeholder="How are you feeling?"
+                maxLength={30}
+                value={moodInput}
+                onChange={e => setMoodInput(e.target.value.slice(0, 30))}
+                onKeyDown={e => { if (e.key === 'Enter') handleMoodSave(); if (e.key === 'Escape') { setMoodEditing(false); setMoodInput(''); } }}
+              />
+              <div className="mood-input-footer">
+                <span className="mood-char-count">{moodInput.length}/30</span>
+                <div className="mood-input-btns">
+                  {moodEditing && (
+                    <button className="mood-cancel-btn" onClick={() => { setMoodEditing(false); setMoodInput(''); }}>Cancel</button>
+                  )}
+                  <button className="mood-save-btn" onClick={handleMoodSave} disabled={!moodInput.trim()}>Save</button>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>

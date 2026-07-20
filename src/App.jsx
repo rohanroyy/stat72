@@ -140,8 +140,39 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   // Active Navigation Tab: 'dashboard' | 'calendar' | 'materials' | 'explore' | 'announcement'
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('studydock_active_tab') || 'dashboard';
+    // Also try reading from the current URL state if available
+    const historyTab = window.history.state?.tab;
+    return historyTab || localStorage.getItem('studydock_active_tab') || 'dashboard';
   });
+
+  // Sync tab changes with browser history so back/forward gesture works
+  const navigateToTab = useCallback((tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('studydock_active_tab', tab);
+    window.history.pushState({ tab }, '', window.location.pathname + window.location.search);
+  }, []);
+
+  // Listen for browser back/forward button
+  useEffect(() => {
+    const onPopState = (e) => {
+      const tab = e.state?.tab;
+      if (tab) {
+        setActiveTab(tab);
+        localStorage.setItem('studydock_active_tab', tab);
+      } else {
+        // No history state → go to dashboard
+        setActiveTab('dashboard');
+        localStorage.setItem('studydock_active_tab', 'dashboard');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    // Seed the initial history entry so the first back press doesn't close the app
+    if (!window.history.state?.tab) {
+      const initialTab = localStorage.getItem('studydock_active_tab') || 'dashboard';
+      window.history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search);
+    }
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -191,15 +222,13 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   const handleLoginSuccess = (student) => {
     setCurrentUser(student);
-    setActiveTab('dashboard');
-    localStorage.setItem('studydock_active_tab', 'dashboard');
+    navigateToTab('dashboard');
     localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
   };
 
   const handleRegisterSuccess = (student) => {
     setCurrentUser(student);
-    setActiveTab('dashboard');
-    localStorage.setItem('studydock_active_tab', 'dashboard');
+    navigateToTab('dashboard');
     localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
   };
 
@@ -697,11 +726,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
       {/* Navigation bar — hidden in Admin and when user is not logged in */}
       {!isAdminHost && currentUser && (
-        <BottomNav
+              <BottomNav
           activeTab={activeTab}
           onChangeTab={(tab) => {
-            setActiveTab(tab);
-            localStorage.setItem('studydock_active_tab', tab);
+            navigateToTab(tab);
             if (tab === 'materials') {
               setSelectedRootFolder(null);
               localStorage.removeItem('studydock_selected_folder');
