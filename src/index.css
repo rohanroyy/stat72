@@ -2354,24 +2354,8 @@ button:focus-visible, a:focus-visible {
   background: var(--accent) !important;
 }
 
-/* Bottom nav in light tabs */
-.light-theme-active .bottom-nav {
-  background: #ffffff !important;
-  border-top: 1px solid #e8e8e8 !important;
-}
+/* Bottom nav keeps its original dark color on all tabs */
 
-.light-theme-active .nav-item {
-  color: #888888 !important;
-}
-
-.light-theme-active .nav-item.active {
-  color: var(--accent) !important;
-  background: var(--accent-soft) !important;
-}
-
-.light-theme-active .nav-label {
-  color: inherit !important;
-}
 
 /* Section labels & breadcrumbs */
 .light-theme-active .section-label-text {

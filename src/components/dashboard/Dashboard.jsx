@@ -77,6 +77,9 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         .update(updatedFields)
         .eq('id', student.id);
       if (error) throw error;
+      // Keep localStorage in sync so page refresh shows fresh data
+      const merged = { ...student, ...updatedFields };
+      localStorage.setItem('bahattor_logged_in_student', JSON.stringify(merged));
     } else {
       const rawMock = localStorage.getItem('bahattor_mock_students') || '[]';
       const mockStudents = JSON.parse(rawMock);
@@ -127,6 +130,33 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     reader.readAsDataURL(file);
   };
 
+  const compressImage = (base64, maxSizeKB = 200) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        // Resize to max 400x400
+        const MAX = 400;
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // Reduce quality until under maxSizeKB
+        let quality = 0.85;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        while (result.length / 1024 > maxSizeKB && quality > 0.3) {
+          quality -= 0.1;
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(result);
+      };
+      img.src = base64;
+    });
+  };
+
   const applyPicSave = (pic) => {
     if (!pic) return;
     localStorage.setItem('bahattor_profile_pic_' + student.id, pic);
@@ -159,12 +189,6 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     setEditError('');
     setSaveLoading(true);
 
-    let picToSave = profilePic;
-    if (picPreview) {
-      picToSave = picPreview;
-      applyPicSave(picPreview);
-    }
-
     const { name, dob, gender, class_roll, session, phone_number } = editForm;
     if (!name || !dob || !gender || !class_roll || !session || !phone_number) {
       setEditError('All fields are required.');
@@ -173,6 +197,12 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     }
 
     try {
+      // Compress image before saving if there's a new preview
+      let picToSave = profilePic;
+      if (picPreview) {
+        picToSave = await compressImage(picPreview, 200);
+      }
+
       const updatedFields = {
         name: name.trim(),
         dob,
@@ -183,13 +213,15 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         profile_picture: picToSave
       };
       await persistStudentUpdate(updatedFields);
+      // Only update local state AFTER successful DB/localStorage write
+      applyPicSave(picToSave === profilePic ? null : picToSave);
       const updated = { ...student, ...updatedFields };
       setStudent(updated);
       onProfileUpdate(updated);
       setIsEditing(false);
       setShowProfileModal(false);
     } catch (err) {
-      setEditError(err.message || 'Failed to update profile.');
+      setEditError(err.message || 'Failed to update profile. Make sure your database has the latest schema (run: ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_picture TEXT;)');
     } finally {
       setSaveLoading(false);
     }
