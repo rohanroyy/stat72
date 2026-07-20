@@ -75,3 +75,34 @@ CREATE POLICY "app_settings_delete" ON app_settings FOR DELETE USING (true);
 -- ALTER PUBLICATION supabase_realtime ADD TABLE exams;
 -- ALTER PUBLICATION supabase_realtime ADD TABLE drive_folders;
 -- ALTER PUBLICATION supabase_realtime ADD TABLE app_settings;
+
+-- Students (user profiles linked to auth.users)
+CREATE TABLE IF NOT EXISTS students (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  name TEXT NOT NULL,
+  dob DATE NOT NULL,
+  gender TEXT NOT NULL,
+  class_roll TEXT NOT NULL,
+  registration_number TEXT NOT NULL UNIQUE,
+  session TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  phone_number TEXT NOT NULL,
+  mood TEXT DEFAULT NULL,
+  mood_selected_at TIMESTAMPTZ DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS students_reg_idx ON students (registration_number);
+
+-- RLS for students
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "students_select_all" ON students;
+DROP POLICY IF EXISTS "students_insert_own" ON students;
+DROP POLICY IF EXISTS "students_update_own" ON students;
+
+CREATE POLICY "students_select_all" ON students FOR SELECT USING (true);
+CREATE POLICY "students_insert_own" ON students FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "students_update_own" ON students FOR UPDATE USING (auth.uid() = id);
+

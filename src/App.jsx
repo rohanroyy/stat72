@@ -13,13 +13,18 @@ import TelegramSetup from './components/telegram/TelegramSetup';
 import TelegramManager from './components/telegram/TelegramManager';
 import ExamCalendar from './components/calendar/ExamCalendar';
 import AnnouncementPage from './components/announcement/AnnouncementPage';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import Dashboard from './components/dashboard/Dashboard';
+import MaterialsPage from './components/materials/MaterialsPage';
+import ExplorePage from './components/explore/ExplorePage';
 import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey } from './config/drive';
 import { getTelegramConfig, saveTelegramConfig, clearTelegramConfig } from './services/telegramService';
 import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage, subscribeToExams } from './services/examService';
 import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
 import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings } from './services/settingsService';
 import { loadAppData } from './services/dataService';
-import { isSupabaseConfigured } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
@@ -133,10 +138,69 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     }
   });
 
-  // Active Navigation Tab: 'calendar' | 'files' | 'telegram' | 'announcement'
+  // Active Navigation Tab: 'dashboard' | 'calendar' | 'materials' | 'explore' | 'announcement'
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('studydock_active_tab') || 'calendar';
+    return localStorage.getItem('studydock_active_tab') || 'dashboard';
   });
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('bahattor_logged_in_student');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [authView, setAuthView] = useState('login'); // 'login' | 'register'
+
+  // Fetch Supabase session if configured
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Fetch student details
+        const { data: student } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (student) {
+          setCurrentUser(student);
+          localStorage.setItem('bahattor_logged_in_student', JSON.stringify(student));
+        }
+      }
+    }
+    checkAuth();
+  }, []);
+
+  const handleLoginSuccess = (student) => {
+    setCurrentUser(student);
+    setActiveTab('dashboard');
+    localStorage.setItem('studydock_active_tab', 'dashboard');
+  };
+
+  const handleRegisterSuccess = (student) => {
+    setCurrentUser(student);
+    setActiveTab('dashboard');
+    localStorage.setItem('studydock_active_tab', 'dashboard');
+  };
+
+  const handleLogout = async () => {
+    if (isSupabaseConfigured()) {
+      await supabase.auth.signOut();
+    }
+    localStorage.removeItem('bahattor_logged_in_student');
+    setCurrentUser(null);
+    setAuthView('login');
+  };
+
+  const handleProfileUpdate = (updatedStudent) => {
+    setCurrentUser(updatedStudent);
+  };
 
   const [tgConfig, setTgConfig] = useState(() => {
     if (initialData?.settings?.telegram?.chatId || initialData?.settings?.telegram?.token) {
@@ -502,6 +566,35 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
       );
     }
 
+    if (!currentUser) {
+      if (authView === 'login') {
+        return (
+          <Login
+            onLoginSuccess={handleLoginSuccess}
+            onGoToRegister={() => setAuthView('register')}
+          />
+        );
+      } else {
+        return (
+          <Register
+            onRegisterSuccess={handleRegisterSuccess}
+            onGoToLogin={() => setAuthView('login')}
+          />
+        );
+      }
+    }
+
+    if (activeTab === 'dashboard') {
+      return (
+        <Dashboard
+          student={currentUser}
+          exams={examsList}
+          onProfileUpdate={handleProfileUpdate}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
     if (activeTab === 'calendar') {
       return (
         <ExamCalendar
@@ -511,53 +604,28 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
       );
     }
 
+    if (activeTab === 'materials') {
+      return (
+        <MaterialsPage
+          foldersList={foldersList}
+          selectedRootFolder={selectedRootFolder}
+          onSelectRootFolder={handleSelectRootFolder}
+          localApiKey={localApiKey}
+          handleOpenFile={handleOpenFile}
+          registerRefreshCallback={registerRefreshCallback}
+          tgConfig={tgConfig}
+          tgRefreshKey={tgRefreshKey}
+        />
+      );
+    }
+
+    if (activeTab === 'explore') {
+      return <ExplorePage />;
+    }
+
     if (activeTab === 'announcement') {
       return <AnnouncementPage />;
     }
-
-    if (activeTab === 'telegram') {
-      if (!tgConfig.chatId) {
-        return (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <h2 className="body-l" style={{ fontWeight: '600' }}>Telegram Sync is not configured</h2>
-            <p className="caption" style={{ color: 'var(--text-tertiary)', marginTop: '8px' }}>
-              Please check back later or contact your administrator.
-            </p>
-          </div>
-        );
-      }
-      return (
-        <TelegramManager
-          key={`${tgConfig.token}::${tgConfig.chatId}::${tgRefreshKey}`}
-          onOpenFile={handleOpenFile}
-          onRegisterRefresh={(cb) => registerRefreshCallback('telegram', cb)}
-        />
-      );
-    }
-
-    if (!selectedRootFolder) {
-      return (
-        <RootFoldersList
-          foldersList={foldersList}
-          onSelectFolder={handleSelectRootFolder}
-          onOpenAdmin={null} // Hidden for general users
-        />
-      );
-    }
-
-    return (
-      <FileManagerContainer
-        key={selectedRootFolder.id}
-        folder={selectedRootFolder}
-        apiKey={localApiKey}
-        onNavigateBack={() => {
-          setSelectedRootFolder(null);
-          localStorage.removeItem('studydock_selected_folder');
-        }}
-        onOpenFile={handleOpenFile}
-        onRegisterRefresh={(cb) => registerRefreshCallback('files', cb)}
-      />
-    );
   };
 
   return (
@@ -610,14 +678,14 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         {renderContent()}
       </main>
 
-      {/* Navigation bar — hidden in Admin */}
-      {!isAdminHost && (
+      {/* Navigation bar — hidden in Admin and when user is not logged in */}
+      {!isAdminHost && currentUser && (
         <BottomNav
           activeTab={activeTab}
           onChangeTab={(tab) => {
             setActiveTab(tab);
             localStorage.setItem('studydock_active_tab', tab);
-            if (tab === 'files') {
+            if (tab === 'materials') {
               setSelectedRootFolder(null);
               localStorage.removeItem('studydock_selected_folder');
             }
