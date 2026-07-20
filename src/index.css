@@ -1695,13 +1695,14 @@ button:focus-visible, a:focus-visible {
 .mood-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
   right: 0;
+  left: auto;
+  width: calc(200% + 16px);
   background: #ffffff;
   border: 1px solid #d0d0d0;
   border-radius: 14px;
   overflow: hidden;
-  z-index: 200;
+  z-index: 350;
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
   animation: dropdown-in 0.15s ease;
 }
@@ -2152,107 +2153,263 @@ button:focus-visible, a:focus-visible {
 .explore-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px 20px;
+  gap: 28px;
+  padding: 24px 20px 100px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .explore-header h2 {
   font-size: 28px;
   font-weight: 750;
-  color: var(--text-primary);
+  color: #111111;
 }
 
 .explore-header p {
-  font-size: 14.5px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: #666666;
   margin-top: 6px;
   line-height: 1.6;
 }
 
-.explore-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.explore-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-hairline);
-  border-radius: 20px;
-  padding: 20px;
+.explore-section {
   display: flex;
   flex-direction: column;
-  transition: all 150ms ease;
+  gap: 12px;
+}
+
+/* Moods Board */
+.explore-moods-board {
+  min-height: 180px;
   position: relative;
-}
-
-.explore-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--accent);
-  border-radius: 20px 20px 0 0;
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-
-.explore-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--text-tertiary);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-}
-
-.explore-card:hover::before {
-  opacity: 1;
-}
-
-.explore-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.explore-icon {
-  color: var(--accent);
-  background: var(--accent-soft);
-  width: 42px; height: 42px;
-  border-radius: 12px;
+  overflow: hidden;
+  background: #fbfbfb;
+  border: 1px dashed #cccccc;
+  border-radius: 20px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.explore-tag {
-  font-size: 11px;
+.moods-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #888888;
+  font-size: 13.5px;
+}
+
+.moods-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+  color: #888888;
+}
+
+.moods-empty-state h3 {
+  font-size: 16px;
   font-weight: 600;
+  color: #333333;
+}
+
+.moods-empty-state p {
+  font-size: 13px;
+  color: #666666;
+  max-width: 250px;
+  line-height: 1.5;
+}
+
+.moods-float-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Floating speech bubble wrapper */
+.mood-bubble-wrapper {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, z-index 0.2s ease;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  user-select: none;
+  z-index: 5;
+}
+
+.mood-bubble-wrapper:hover {
+  transform: scale(1.08) !important;
+  z-index: 100;
+}
+
+.mood-bubble-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 2;
+}
+
+.mood-bubble-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mood-bubble-content {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+  position: relative;
+  margin-bottom: 8px;
+  z-index: 1;
+}
+
+/* triangular tail pointing down to the avatar */
+.mood-bubble-content::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #e2e8f0 transparent transparent transparent;
+}
+
+.mood-bubble-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: -1px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+}
+
+/* Tooltip on hover */
+.mood-bubble-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  background: #111111;
+  color: #ffffff;
   padding: 4px 8px;
   border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-size: 11px;
+  white-space: nowrap;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: opacity 0.15s ease;
+  z-index: 200;
 }
 
-.explore-tag.coming-soon {
+.mood-bubble-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #111111 transparent transparent transparent;
+}
+
+.mood-bubble-wrapper:hover .mood-bubble-tooltip {
+  opacity: 1;
+}
+
+/* Floating Animations (slow & smooth loops) using dynamic random direction variables */
+@keyframes float-drift-1 {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(var(--dx1, 15px), var(--dy1, -20px)); }
+  66% { transform: translate(var(--dx2, -10px), var(--dy2, 15px)); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes float-drift-2 {
+  0% { transform: translate(0, 0); }
+  40% { transform: translate(var(--dx2, -20px), var(--dy2, 12px)); }
+  75% { transform: translate(var(--dx1, 18px), var(--dy1, -15px)); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes float-drift-3 {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(var(--dx1, 12px), var(--dy1, 18px)); }
+  80% { transform: translate(var(--dx2, -15px), var(--dy2, -12px)); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Coming Soon Section */
+.explore-coming-soon-card {
+  background: #fbfbfb;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.01);
+}
+
+.coming-soon-glow-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   background: var(--accent-soft);
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  box-shadow: 0 0 15px rgba(232, 71, 43, 0.1);
 }
 
-.explore-tag.planning {
-  background: rgba(255,255,255,0.06);
-  color: var(--text-secondary);
-}
-
-.explore-card-title {
-  font-size: 17px;
+.explore-coming-soon-card h3 {
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+  color: #111111;
 }
 
-.explore-card-desc {
+.explore-coming-soon-card p {
   font-size: 13.5px;
-  color: var(--text-secondary);
+  color: #666666;
+  max-width: 450px;
   line-height: 1.6;
 }
 
@@ -2538,28 +2695,14 @@ button:focus-visible, a:focus-visible {
   color: #555555 !important;
 }
 
-.light-theme-active .explore-card {
-  background: #f9f9f9 !important;
-  border: 1px solid #e0e0e0 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+.light-theme-active .explore-moods-board {
+  background: #fafafa !important;
+  border-color: #e2e8f0 !important;
 }
 
-.light-theme-active .explore-card:hover {
-  border-color: #cccccc !important;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.07) !important;
-}
-
-.light-theme-active .explore-card-title {
-  color: #111111 !important;
-}
-
-.light-theme-active .explore-card-desc {
-  color: #666666 !important;
-}
-
-.light-theme-active .explore-tag.planning {
-  background: #eeeeee !important;
-  color: #666666 !important;
+.light-theme-active .explore-coming-soon-card {
+  background: #fafafa !important;
+  border-color: #e2e8f0 !important;
 }
 
 /* Announcement page */
