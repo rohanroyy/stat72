@@ -17,12 +17,12 @@ export default function ApiKeySetup({ onKeySubmit }) {
 
   return (
     <div className="setup-screen">
-      <div className="setup-logo">StudyDock</div>
+      <div className="setup-logo">Bahattor</div>
 
       <div className="setup-card">
         <h2>Connect Google Drive</h2>
         <p>
-          Enter your Google API key to browse Drive files in StudyDock.
+          Enter your Google API key to browse Drive files in Bahattor.
           When Supabase is configured, the key is stored in the shared database for all users.
         </p>
 

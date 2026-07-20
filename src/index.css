@@ -1097,34 +1097,64 @@ button:focus-visible, a:focus-visible {
 .cal-exam-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
 }
 
 .cal-exam-item {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 16px 0;
-  border-bottom: 1px solid #F0F0F0;
+  padding: 16px;
+  background: #F8F9FA;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  transition: all 150ms ease;
 }
 
-.cal-exam-item:last-child { border-bottom: none; }
+.cal-exam-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+}
+
+.cal-exam-item.past {
+  opacity: 0.55;
+  filter: grayscale(15%);
+  background: #FAFAFA;
+}
+
+.cal-exam-item.past:hover {
+  transform: none;
+  box-shadow: none;
+}
 
 .cal-exam-num {
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: #F5F5F5;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-card);
   flex-shrink: 0;
 }
 
-.cal-exam-item.highlight .cal-exam-num {
+.cal-exam-num-month {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cal-exam-num-week {
   background: #111111;
-  color: #fff;
+  color: #FFFFFF;
+}
+
+.cal-exam-item.past .cal-exam-num-month {
+  background: #F0F0F0;
+  color: var(--text-card-muted);
+}
+
+.cal-exam-item.past .cal-exam-num-week {
+  background: #F0F0F0;
+  color: var(--text-card-muted);
 }
 
 .cal-exam-body { flex: 1; min-width: 0; }
@@ -1178,14 +1208,22 @@ button:focus-visible, a:focus-visible {
   padding: 0 24px 8px;
 }
 .cal-view-toggle-btn {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--accent);
-  padding: 4px 0;
-  background: none;
-  border: none;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  transition: all 150ms ease;
+}
+.cal-view-toggle-btn:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  border-color: var(--text-tertiary);
+  transform: scale(1.05);
 }
 
 /* =========================================

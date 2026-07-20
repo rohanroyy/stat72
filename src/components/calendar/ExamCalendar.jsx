@@ -57,6 +57,24 @@ function buildWeekStrip(date) {
   });
 }
 
+/** Sort exams: upcoming/current first (chronological), past last (chronological) */
+function sortExams(list, todayStr) {
+  return [...list].sort((a, b) => {
+    const aIsPast = a.date < todayStr;
+    const bIsPast = b.date < todayStr;
+
+    if (aIsPast && !bIsPast) return 1;  // a goes below b
+    if (!aIsPast && bIsPast) return -1; // a goes above b
+
+    // Same category: sort chronologically by date
+    if (a.date !== b.date) {
+      return a.date.localeCompare(b.date);
+    }
+    // If same date, sort chronologically by time
+    return (a.time || '').localeCompare(b.time || '');
+  });
+}
+
 export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
@@ -85,8 +103,8 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
     });
   };
 
-  const monthlyExamsList = getMonthExams();
-  const dailyExamsList = exams.filter(e => e.date === selectedDateStr);
+  const monthlyExamsList = sortExams(getMonthExams(), todayStr);
+  const dailyExamsList = sortExams(exams.filter(e => e.date === selectedDateStr), todayStr);
 
   const monthGrid = buildMonthGrid(activeYear, activeMonth);
   const weekStrip = buildWeekStrip(selectedDate);
@@ -131,7 +149,7 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
           onClick={viewMode === 'week' ? backToMonth : undefined}
           title={viewMode === 'week' ? 'Back to month view' : ''}
         >
-          {MONTH_NAMES[activeMonth]}
+          {MONTH_NAMES[activeMonth]} {activeYear}
         </button>
         {onAddExam && (
           <button
@@ -163,8 +181,14 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
       {/* Week back-to-month view toggle link */}
       {viewMode === 'week' && (
         <div className="cal-view-toggle">
-          <button className="cal-view-toggle-btn" onClick={backToMonth}>
-            Show full month
+          <button className="cal-view-toggle-btn" onClick={backToMonth} aria-label="Show full month" title="Show full month">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" strokeWidth="3" />
+            </svg>
           </button>
         </div>
       )}
@@ -236,9 +260,8 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
       <div className="cal-exam-sheet">
         <div className="cal-exam-sheet-header">
           <span className="cal-exam-sheet-title">
-            {viewMode === 'month' ? `Exams in ${MONTH_NAMES[activeMonth]}` : `Exams for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            {viewMode === 'month' ? `Exams in ${MONTH_NAMES[activeMonth]} ${activeYear}` : `Exams for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
           </span>
-          <button className="cal-exam-menu-btn" aria-label="More options">...</button>
         </div>
 
         {viewMode === 'month' ? (
@@ -261,14 +284,15 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
               {monthlyExamsList.map((exam, idx) => {
                 const parts = exam.date.split('-');
                 const examDay = parts.length === 3 ? parseInt(parts[2], 10) : '';
+                const isPast = exam.date < todayStr;
                 return (
                   <div
                     key={exam.id}
-                    className="cal-exam-item"
+                    className={`cal-exam-item ${isPast ? 'past' : ''}`}
                     onClick={() => handleExamCardClick(exam)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="cal-exam-num" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+                    <div className="cal-exam-num cal-exam-num-month">
                       {examDay}
                     </div>
                     <div className="cal-exam-body">
@@ -307,23 +331,26 @@ export default function ExamCalendar({ onAddExam, exams: examsProp = [] }) {
             </div>
           ) : (
             <div className="cal-exam-list">
-              {dailyExamsList.map((exam, idx) => (
-                <div key={exam.id} className="cal-exam-item">
-                  <div className="cal-exam-num" style={{ background: '#111111', color: '#FFFFFF' }}>
-                    {idx + 1}
-                  </div>
-                  <div className="cal-exam-body">
-                    <div className="cal-exam-name">{exam.subject}</div>
-                    <div className="cal-exam-meta">
-                      {exam.duration && <span>{exam.duration}</span>}
-                      {exam.duration && exam.room && <span>·</span>}
-                      {exam.room && <span>{exam.room}</span>}
-                      {exam.notes && <span>· {exam.notes}</span>}
+              {dailyExamsList.map((exam, idx) => {
+                const isPast = exam.date < todayStr;
+                return (
+                  <div key={exam.id} className={`cal-exam-item ${isPast ? 'past' : ''}`}>
+                    <div className="cal-exam-num cal-exam-num-week">
+                      {idx + 1}
                     </div>
+                    <div className="cal-exam-body">
+                      <div className="cal-exam-name">{exam.subject}</div>
+                      <div className="cal-exam-meta">
+                        {exam.duration && <span>{exam.duration}</span>}
+                        {exam.duration && exam.room && <span>·</span>}
+                        {exam.room && <span>{exam.room}</span>}
+                        {exam.notes && <span>· {exam.notes}</span>}
+                      </div>
+                    </div>
+                    <div className="cal-exam-time">{exam.time}</div>
                   </div>
-                  <div className="cal-exam-time">{exam.time}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
         )}

@@ -19,7 +19,7 @@ export default function AdminLogin({ onLoginSuccess }) {
 
   return (
     <div className="setup-screen">
-      <div className="setup-logo">StudyDock Admin</div>
+      <div className="setup-logo">Bahattor Admin</div>
       <div className="setup-card">
         <h2>Admin Authentication</h2>
         <p>Access is restricted to authorized administrators only. Enter your credentials below to log in.</p>

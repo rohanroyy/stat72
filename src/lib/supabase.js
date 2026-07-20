@@ -22,7 +22,7 @@ function resolveSupabaseUrl(url, anonKey) {
   if (!trimmed || !trimmed.includes(ref)) {
     if (trimmed && trimmed !== canonical) {
       console.warn(
-        `[StudyDock] VITE_SUPABASE_URL "${trimmed}" does not match your anon key project "${ref}". Using ${canonical}.`
+        `[Bahattor] VITE_SUPABASE_URL "${trimmed}" does not match your anon key project "${ref}". Using ${canonical}.`
       );
     }
     return canonical;

@@ -72,7 +72,7 @@ export default function App() {
   if (bootState.loading) {
     return (
       <div className="setup-screen">
-        <div className="setup-logo">StudyDock</div>
+        <div className="setup-logo">Bahattor</div>
         <div className="setup-card" style={{ textAlign: 'center' }}>
           <div className="pdf-loading-spinner" style={{ margin: '0 auto 16px', borderTopColor: 'var(--accent)' }} />
           <p>Loading from database...</p>
@@ -84,7 +84,7 @@ export default function App() {
   if (bootState.error && isSupabaseConfigured()) {
     return (
       <div className="setup-screen">
-        <div className="setup-logo">StudyDock</div>
+        <div className="setup-logo">Bahattor</div>
         <div className="setup-card">
           <h2>Database Connection Failed</h2>
           <p style={{ color: 'var(--accent)', marginTop: '12px' }}>{bootState.error}</p>
