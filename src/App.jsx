@@ -628,9 +628,11 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     }
   };
 
+  const isLightTab = activeTab === 'dashboard' || activeTab === 'materials' || activeTab === 'explore' || activeTab === 'announcement';
+
   return (
     <div
-      className="app-layout"
+      className={`app-layout ${isLightTab ? 'light-theme-active' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

@@ -1496,14 +1496,17 @@ button:focus-visible, a:focus-visible {
 }
 
 .dash-view-profile-btn {
-  font-size: 13px;
-  font-weight: 600;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--accent);
   background: var(--accent-soft);
-  padding: 8px 16px;
-  border-radius: 10px;
   border: 1px solid var(--accent-border);
   transition: all 150ms ease;
+  flex-shrink: 0;
 }
 
 .dash-view-profile-btn:hover {
@@ -1513,14 +1516,17 @@ button:focus-visible, a:focus-visible {
 }
 
 .dash-logout-btn {
-  font-size: 13px;
-  font-weight: 500;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #666666;
-  padding: 8px 14px;
-  border-radius: 10px;
   border: 1px solid #e0e0e0;
   background: transparent;
   transition: all 150ms ease;
+  flex-shrink: 0;
 }
 
 .dash-logout-btn:hover {
@@ -1545,9 +1551,7 @@ button:focus-visible, a:focus-visible {
   min-width: 0;
 }
 
-@media (max-width: 580px) {
-  .dash-row-half { flex-direction: column; }
-}
+/* dash-row-half always stays side-by-side (50/50) on all screen sizes */
 
 /* Generic card */
 .dash-card {
@@ -1582,15 +1586,20 @@ button:focus-visible, a:focus-visible {
   display: block;
 }
 
-/* Date Widget */
+/* Date Widget — dark #111111 background */
 .dash-card-date {
-  background: linear-gradient(145deg, #f9f9f9 0%, rgba(232,71,43,0.04) 100%);
+  background: #111111;
+  border-color: #222222;
+}
+
+.dash-card-date .dash-card-section-label {
+  color: rgba(255,255,255,0.45);
 }
 
 .date-day-num {
-  font-size: 56px;
+  font-size: 52px;
   font-weight: 800;
-  color: #111111;
+  color: #ffffff;
   line-height: 1;
   letter-spacing: -2px;
   margin-top: 4px;
@@ -1599,12 +1608,12 @@ button:focus-visible, a:focus-visible {
 .date-day-name {
   font-size: 16px;
   font-weight: 600;
-  color: #333333;
+  color: rgba(255,255,255,0.75);
 }
 
 .date-month-year {
   font-size: 13px;
-  color: #666666;
+  color: rgba(255,255,255,0.45);
   margin-top: 2px;
 }
 
@@ -2234,4 +2243,378 @@ button:focus-visible, a:focus-visible {
   font-size: 13.5px;
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+/* ── Announcement page ────────────────────────────────────────────── */
+.announcements-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 20px 100px;
+  min-height: 100vh;
+}
+
+.announcements-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.announcements-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.announcements-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.announcements-placeholder h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.announcements-placeholder p {
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  max-width: 300px;
+  line-height: 1.6;
+}
+
+/* ── Desktop layout fix ───────────────────────────────────────────── */
+.app-layout {
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.app-content {
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .dash-page {
+    padding: 32px 32px 100px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dash-page {
+    padding: 40px 48px 100px;
+  }
+}
+
+/* ── Light Theme Active (Dashboard, Materials, Explore, Announcements) */
+.light-theme-active {
+  background: #ffffff;
+}
+
+.light-theme-active .app-content {
+  background: #ffffff;
+}
+
+/* Topbar in light tabs */
+.light-theme-active .topbar {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e8e8e8 !important;
+}
+
+.light-theme-active .topbar-title {
+  color: #111111 !important;
+}
+
+.light-theme-active .topbar-btn {
+  color: #555555 !important;
+  background: transparent !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 8px;
+}
+
+.light-theme-active .topbar-btn:hover {
+  color: #111111 !important;
+  background: rgba(0,0,0,0.04) !important;
+}
+
+.light-theme-active .refresh-text {
+  color: #888888 !important;
+}
+
+.light-theme-active .refresh-dot {
+  background: var(--accent) !important;
+}
+
+/* Bottom nav in light tabs */
+.light-theme-active .bottom-nav {
+  background: #ffffff !important;
+  border-top: 1px solid #e8e8e8 !important;
+}
+
+.light-theme-active .nav-item {
+  color: #888888 !important;
+}
+
+.light-theme-active .nav-item.active {
+  color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+}
+
+.light-theme-active .nav-label {
+  color: inherit !important;
+}
+
+/* Section labels & breadcrumbs */
+.light-theme-active .section-label-text {
+  color: #888888 !important;
+}
+
+.light-theme-active .section-label-line {
+  background: #e8e8e8 !important;
+}
+
+.light-theme-active .breadcrumb-item {
+  color: #666666 !important;
+}
+
+.light-theme-active .breadcrumb-item.active {
+  color: #111111 !important;
+  font-weight: 600 !important;
+}
+
+.light-theme-active .breadcrumb-sep {
+  color: #aaaaaa !important;
+}
+
+/* Filter pills */
+.light-theme-active .filter-pills {
+  background: transparent !important;
+}
+
+.light-theme-active .filter-pill {
+  background: #f3f3f3 !important;
+  border: 1px solid #e0e0e0 !important;
+  color: #555555 !important;
+}
+
+.light-theme-active .filter-pill:hover {
+  border-color: #999 !important;
+  color: #111111 !important;
+}
+
+.light-theme-active .filter-pill.active {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+
+/* Root folder cards (Materials) */
+.light-theme-active .root-folders-grid {
+  background: #ffffff;
+}
+
+.light-theme-active .root-folder-card {
+  background: #f9f9f9 !important;
+  border: 1px solid #e0e0e0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+}
+
+.light-theme-active .root-folder-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 8px 24px rgba(232,71,43,0.08) !important;
+}
+
+.light-theme-active .root-folder-name {
+  color: #111111 !important;
+}
+
+.light-theme-active .root-folder-desc {
+  color: #888888 !important;
+}
+
+.light-theme-active .root-folder-card-arrow {
+  color: #aaaaaa !important;
+}
+
+.light-theme-active .root-folder-card:hover .root-folder-card-arrow {
+  color: var(--accent) !important;
+}
+
+/* File & folder rows (inside Drive folder) */
+.light-theme-active .folder-row,
+.light-theme-active .file-row {
+  background: #f9f9f9 !important;
+  border: 1px solid #e8e8e8 !important;
+}
+
+.light-theme-active .folder-row:hover,
+.light-theme-active .file-row:hover {
+  background: #f0f0f0 !important;
+  border-color: #cccccc !important;
+}
+
+.light-theme-active .folder-name {
+  color: #111111 !important;
+}
+
+.light-theme-active .folder-icon {
+  background: #eeeeee !important;
+  color: #555555 !important;
+}
+
+.light-theme-active .folder-count {
+  background: #eeeeee !important;
+  color: #666666 !important;
+}
+
+.light-theme-active .folder-chevron {
+  color: #aaaaaa !important;
+}
+
+.light-theme-active .file-name {
+  color: #111111 !important;
+}
+
+.light-theme-active .file-meta {
+  color: #777777 !important;
+}
+
+/* Skeleton in light mode */
+.light-theme-active .skeleton-row {
+  background: #f5f5f5 !important;
+}
+
+.light-theme-active .skeleton-icon,
+.light-theme-active .skeleton-line {
+  background: #e8e8e8 !important;
+}
+
+/* Materials tab pills */
+.light-theme-active .materials-container {
+  background: #ffffff;
+}
+
+.light-theme-active .materials-pills {
+  background: #f3f3f3 !important;
+  border: 1px solid #e0e0e0 !important;
+}
+
+.light-theme-active .materials-pill {
+  color: #666666 !important;
+}
+
+.light-theme-active .materials-pill.active {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+}
+
+.light-theme-active .materials-empty-state {
+  color: #888888 !important;
+}
+
+.light-theme-active .materials-empty-state h3 {
+  color: #333333 !important;
+}
+
+.light-theme-active .materials-empty-state p {
+  color: #777777 !important;
+}
+
+/* Explore page */
+.light-theme-active .explore-container {
+  background: #ffffff;
+}
+
+.light-theme-active .explore-header h2 {
+  color: #111111 !important;
+}
+
+.light-theme-active .explore-header p {
+  color: #555555 !important;
+}
+
+.light-theme-active .explore-card {
+  background: #f9f9f9 !important;
+  border: 1px solid #e0e0e0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+}
+
+.light-theme-active .explore-card:hover {
+  border-color: #cccccc !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.07) !important;
+}
+
+.light-theme-active .explore-card-title {
+  color: #111111 !important;
+}
+
+.light-theme-active .explore-card-desc {
+  color: #666666 !important;
+}
+
+.light-theme-active .explore-tag.planning {
+  background: #eeeeee !important;
+  color: #666666 !important;
+}
+
+/* Announcement page */
+.light-theme-active .announcements-container {
+  background: #ffffff;
+}
+
+.light-theme-active .announcements-header h2 {
+  color: #111111 !important;
+}
+
+.light-theme-active .announcements-header p {
+  color: #555555 !important;
+}
+
+.light-theme-active .announcements-placeholder {
+  color: #888888 !important;
+}
+
+.light-theme-active .announcements-placeholder h3 {
+  color: #333333 !important;
+}
+
+.light-theme-active .announcements-placeholder p {
+  color: #777777 !important;
+}
+
+/* generic text in light tab containers */
+.light-theme-active .display-l,
+.light-theme-active .display-m {
+  color: #111111 !important;
+}
+
+.light-theme-active .body-l,
+.light-theme-active .body-m {
+  color: #444444 !important;
+}
+
+.light-theme-active .caption {
+  color: #888888 !important;
+}
+
+.light-theme-active .header-back-btn {
+  background: #f3f3f3 !important;
+  border: 1px solid #e0e0e0 !important;
+  color: #555555 !important;
+}
+
+.light-theme-active .header-back-btn:hover {
+  background: #ebebeb !important;
+  color: #111111 !important;
+  border-color: #cccccc !important;
 }
