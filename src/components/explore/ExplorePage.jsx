@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import ImposterGame from './ImposterGame';
 
 export default function ExplorePage() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bubbleStyles, setBubbleStyles] = useState([]);
+  const [showImposterGame, setShowImposterGame] = useState(false);
 
   useEffect(() => {
     async function loadMoods() {
@@ -65,6 +67,10 @@ export default function ExplorePage() {
 
   // Dynamically change height of the section as mood numbers increase (starts small)
   const boardHeight = students.length === 0 ? 180 : Math.max(180, Math.min(800, 150 + students.length * 50));
+
+  if (showImposterGame) {
+    return <ImposterGame onClose={() => setShowImposterGame(false)} />;
+  }
 
   return (
     <div className="explore-container">
@@ -140,7 +146,28 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Section 2: Coming Soon */}
+      {/* Section 2: Guess the Imposter Mini Game */}
+      <div className="explore-section">
+        <span className="section-label-text">Guess the Imposter</span>
+        <div className="section-label-line" />
+        
+        <div className="explore-game-card" onClick={() => setShowImposterGame(true)}>
+          <div className="game-card-icon">🕵️‍♂️</div>
+          <div className="game-card-details">
+            <h3>Play Guess the Imposter</h3>
+            <p>Deceive your friends or spot the odd drawing in this quick party game!</p>
+          </div>
+          <div className="game-card-action">
+            <span>Play</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 3: Coming Soon */}
       <div className="explore-section explore-coming-soon-section">
         <span className="section-label-text">Feature Roadmap</span>
         <div className="section-label-line" />
