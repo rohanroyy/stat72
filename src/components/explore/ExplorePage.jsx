@@ -2,61 +2,65 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import ImposterGame from './ImposterGame';
 
-// Sub-component for individual draggable floating mood bubble with 60FPS direct DOM drag handling
+/**
+ * FloatingMoodBubble — two-layer architecture:
+ *
+ *  <div class="mood-float-track">   ← outer: handles CSS keyframe float animation
+ *    <div class="mood-drag-layer">  ← inner: handles drag offset via direct DOM translate3d
+ *      ... bubble content ...
+ *    </div>
+ *  </div>
+ *
+ * Keeping animation and drag on SEPARATE elements means they never
+ * fight over the `transform` property, so animations keep running
+ * even after a bubble is dragged to a new position.
+ */
 function FloatingMoodBubble({ student, style, initials }) {
-  const bubbleRef = useRef(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ mouseX: 0, mouseY: 0, startX: 0, startY: 0 });
-  const currentPos = useRef({ x: 0, y: 0 });
+  const dragLayerRef = useRef(null);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ mouseX: 0, mouseY: 0 });
+  const accOffset = useRef({ x: 0, y: 0 }); // accumulated offset that persists across drags
 
-  const handleStart = (e) => {
-    // Only primary mouse button or touch
-    if (e.button !== undefined && e.button !== 0) return;
-
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    if (clientX === undefined || clientY === undefined) return;
-
-    setIsDragging(true);
-    dragStart.current = {
-      mouseX: clientX,
-      mouseY: clientY,
-      startX: currentPos.current.x,
-      startY: currentPos.current.y
-    };
-  };
-
+  // Register global listeners once — use refs inside to avoid stale closures
   useEffect(() => {
-    if (!isDragging) return;
-
-    const el = bubbleRef.current;
-    if (el) {
-      el.style.transition = 'none';
-      el.style.animation = 'none';
-    }
-
     const handleMove = (e) => {
-      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-      if (clientX === undefined || clientY === undefined) return;
+      if (!isDragging.current) return;
+      e.preventDefault();
+
+      const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+      const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+      if (clientX == null || clientY == null) return;
 
       const dx = clientX - dragStart.current.mouseX;
       const dy = clientY - dragStart.current.mouseY;
 
-      const newX = dragStart.current.startX + dx;
-      const newY = dragStart.current.startY + dy;
+      const nx = accOffset.current.x + dx;
+      const ny = accOffset.current.y + dy;
 
-      currentPos.current = { x: newX, y: newY };
-
-      if (el) {
-        el.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
-      }
+      // Update DOM directly — zero React re-render overhead → 60fps
+      const el = dragLayerRef.current;
+      if (el) el.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
     };
 
-    const handleEnd = () => {
-      setIsDragging(false);
-      setPos(currentPos.current);
+    const handleEnd = (e) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+
+      const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX;
+      const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY;
+
+      if (clientX != null && clientY != null) {
+        accOffset.current = {
+          x: accOffset.current.x + (clientX - dragStart.current.mouseX),
+          y: accOffset.current.y + (clientY - dragStart.current.mouseY),
+        };
+      }
+
+      // Restore cursor & restore float-track animation (just remove class flag from drag layer)
+      const el = dragLayerRef.current;
+      if (el) {
+        el.style.cursor = 'grab';
+      }
     };
 
     window.addEventListener('mousemove', handleMove, { passive: false });
@@ -72,44 +76,72 @@ function FloatingMoodBubble({ student, style, initials }) {
       window.removeEventListener('touchend', handleEnd);
       window.removeEventListener('touchcancel', handleEnd);
     };
-  }, [isDragging]);
+  }, []); // ← empty deps: register once, use refs inside
+
+  const handleStart = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+    if (clientX == null || clientY == null) return;
+
+    isDragging.current = true;
+    dragStart.current = { mouseX: clientX, mouseY: clientY };
+
+    const el = dragLayerRef.current;
+    if (el) el.style.cursor = 'grabbing';
+  };
 
   return (
+    // OUTER: float animation lives here — never gets an inline transform from drag
     <div
-      ref={bubbleRef}
-      className={`mood-bubble-wrapper ${isDragging ? 'is-dragging' : ''}`}
-      onMouseDown={handleStart}
-      onTouchStart={handleStart}
+      className="mood-float-track"
       style={{
+        position: 'absolute',
         left: style.left,
         top: style.top,
-        animationName: isDragging ? 'none' : style.animationName,
+        animationName: style.animationName,
         animationDuration: style.animationDuration,
         animationDelay: style.animationDelay,
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-        cursor: isDragging ? 'grabbing' : 'grab',
-        zIndex: isDragging ? 999 : undefined,
-        transition: isDragging ? 'none' : undefined,
+        animationIterationCount: 'infinite',
+        animationTimingFunction: 'ease-in-out',
         '--dx1': style['--dx1'],
         '--dy1': style['--dy1'],
         '--dx2': style['--dx2'],
-        '--dy2': style['--dy2']
+        '--dy2': style['--dy2'],
+        zIndex: 5,
       }}
     >
-      {/* Speech bubble at the top */}
-      <div className="mood-bubble-content">
-        <span className="mood-emoji-text">{student.mood}</span>
+      {/* INNER: drag offset lives here — has no animation, no conflict */}
+      <div
+        ref={dragLayerRef}
+        className="mood-bubble-wrapper"
+        onMouseDown={handleStart}
+        onTouchStart={handleStart}
+        style={{
+          /* initial transform — 0,0 so translate3d doesn't conflict with parent animation */
+          transform: 'translate3d(0px, 0px, 0)',
+          cursor: 'grab',
+          userSelect: 'none',
+          touchAction: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <div className="mood-bubble-content">
+          <span className="mood-emoji-text">{student.mood}</span>
+        </div>
+        <div className="mood-bubble-avatar">
+          {student.profile_picture ? (
+            <img src={student.profile_picture} alt={student.name} draggable={false} />
+          ) : (
+            <span>{initials}</span>
+          )}
+        </div>
+        <div className="mood-bubble-tooltip">{student.name}</div>
       </div>
-
-      {/* Profile avatar at the bottom */}
-      <div className="mood-bubble-avatar">
-        {student.profile_picture ? (
-          <img src={student.profile_picture} alt={student.name} draggable={false} />
-        ) : (
-          <span>{initials}</span>
-        )}
-      </div>
-      <div className="mood-bubble-tooltip">{student.name}</div>
     </div>
   );
 }
@@ -133,8 +165,7 @@ export default function ExplorePage() {
         } else {
           const rawMock = localStorage.getItem('bahattor_mock_students') || '[]';
           const mockStudents = JSON.parse(rawMock);
-          const activeMoods = mockStudents.filter(s => s.mood);
-          setStudents(activeMoods);
+          setStudents(mockStudents.filter(s => s.mood));
         }
       } catch (err) {
         console.error('Failed to load explore page moods:', err);
@@ -148,14 +179,13 @@ export default function ExplorePage() {
   useEffect(() => {
     if (students.length > 0) {
       const styles = students.map((s, idx) => {
-        // Distribute starting positions nicely
-        const left = 5 + (idx * 37) % 70; // 5% to 75%
-        const top = 10 + (idx * 29) % 60; // 10% to 70%
-        const speed = 14 + (idx * 4) % 12; // 14s to 26s slow smooth speed
-        const delay = -((idx * 3) % 15); // negative delay
-        const animIdx = (idx % 3) + 1; // drift-1, drift-2, drift-3
-        
-        // Reduced floating direction offsets (-10px to +10px for subtle movement)
+        const left = 5 + (idx * 37) % 70;
+        const top  = 10 + (idx * 29) % 60;
+        const speed = 14 + (idx * 4) % 12;
+        const delay = -((idx * 3) % 15);
+        const animIdx = (idx % 3) + 1;
+
+        // Subtle drift — ±10px
         const dx1 = Math.floor(Math.random() * 20) - 10;
         const dy1 = Math.floor(Math.random() * 20) - 10;
         const dx2 = Math.floor(Math.random() * 20) - 10;
@@ -163,22 +193,23 @@ export default function ExplorePage() {
 
         return {
           left: `${left}%`,
-          top: `${top}%`,
+          top:  `${top}%`,
           animationName: `float-drift-${animIdx}`,
           animationDuration: `${speed}s`,
           animationDelay: `${delay}s`,
           '--dx1': `${dx1}px`,
           '--dy1': `${dy1}px`,
           '--dx2': `${dx2}px`,
-          '--dy2': `${dy2}px`
+          '--dy2': `${dy2}px`,
         };
       });
       setBubbleStyles(styles);
     }
   }, [students]);
 
-  // Dynamically change height of the section as mood numbers increase (starts small)
-  const boardHeight = students.length === 0 ? 180 : Math.max(180, Math.min(800, 150 + students.length * 50));
+  const boardHeight = students.length === 0
+    ? 180
+    : Math.max(180, Math.min(800, 150 + students.length * 50));
 
   if (showImposterGame) {
     return <ImposterGame onClose={() => setShowImposterGame(false)} />;
@@ -194,7 +225,7 @@ export default function ExplorePage() {
       <div className="explore-section">
         <span className="section-label-text">How's the Batch feeling today?</span>
         <div className="section-label-line" />
-        
+
         <div className="explore-moods-board" style={{ height: `${boardHeight}px` }}>
           {loading ? (
             <div className="moods-loading">
@@ -207,13 +238,11 @@ export default function ExplorePage() {
                 const initials = student.name
                   ? student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                   : 'ST';
-                const style = bubbleStyles[idx] || {};
-
                 return (
                   <FloatingMoodBubble
                     key={student.id || idx}
                     student={student}
-                    style={style}
+                    style={bubbleStyles[idx] || {}}
                     initials={initials}
                   />
                 );
@@ -238,7 +267,7 @@ export default function ExplorePage() {
       <div className="explore-section">
         <span className="section-label-text">Guess the Imposter</span>
         <div className="section-label-line" />
-        
+
         <div className="explore-game-card" onClick={() => setShowImposterGame(true)}>
           <div className="game-card-icon">🕵️‍♂️</div>
           <div className="game-card-details">
@@ -248,8 +277,8 @@ export default function ExplorePage() {
           <div className="game-card-action">
             <span>Play</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
             </svg>
           </div>
         </div>
@@ -259,7 +288,7 @@ export default function ExplorePage() {
       <div className="explore-section explore-coming-soon-section">
         <span className="section-label-text">Feature Roadmap</span>
         <div className="section-label-line" />
-        
+
         <div className="explore-coming-soon-card">
           <div className="coming-soon-glow-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

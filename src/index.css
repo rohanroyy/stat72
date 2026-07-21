@@ -2275,31 +2275,29 @@ button:focus-visible, a:focus-visible {
   position: relative;
 }
 
-/* Floating speech bubble wrapper */
-.mood-bubble-wrapper {
+/* Outer float track — animation lives here, never gets an inline transform from drag */
+.mood-float-track {
   position: absolute;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  z-index: 5;
+  /* will-change hints the browser to composite this layer */
+  will-change: transform;
+}
+
+/* Inner drag layer — receives translate3d from drag, no animation */
+.mood-bubble-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   cursor: grab;
-  transition: transform 0.2s ease, z-index 0.2s ease;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
   user-select: none;
   touch-action: none;
-  z-index: 5;
+  will-change: transform;
 }
 
-.mood-bubble-wrapper:hover {
-  transform: scale(1.08) !important;
-  z-index: 100;
-}
-
-.mood-bubble-wrapper.is-dragging {
-  transition: none !important;
-  animation: none !important;
-  cursor: grabbing !important;
-  z-index: 999 !important;
+.mood-bubble-wrapper:active {
+  cursor: grabbing;
 }
 
 .mood-bubble-avatar {
