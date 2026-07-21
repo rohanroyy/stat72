@@ -1402,471 +1402,425 @@ button:focus-visible, a:focus-visible {
   color: var(--accent-hover);
 }
 
-/* ── Redesigned Dashboard (Light Theme Minimal UI) ──────────────── */
+/* ── Redesigned Dashboard (UI Suggestion Layout) ──────────────── */
 .dash-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 20px 100px;
-  max-width: 900px;
+  padding: 16px 16px 100px;
+  max-width: 480px;
   margin: 0 auto;
   width: 100%;
-  background: #ffffff; /* White background as requested */
+  background: #ffffff;
   min-height: 100vh;
   color: #111111;
+  box-sizing: border-box;
 }
 
-/* Header Card */
-.dash-header-card {
+/* Hero Header Card (Dark #111111 background) */
+.dash-hero {
+  background: #111111;
+  border-radius: 0 0 22px 22px;
+  padding: 1.25rem 1.25rem 1.4rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 20px;
-  gap: 12px;
-  flex-wrap: wrap;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-}
-
-.dash-header-left {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 14px;
+  color: #ffffff;
+  margin: -16px -16px 0 -16px;
 }
 
-.dash-avatar-lg {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  border: 2px solid var(--accent);
-  color: var(--accent);
-  font-size: 24px;
+.dash-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dash-hero-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-hero-greeting {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.dash-hero-quote {
+  font-size: 19px;
   font-weight: 700;
+  color: #ffffff;
+  margin: 6px 0 0;
+  line-height: 1.3;
+  max-width: 220px;
+}
+
+.dash-hero-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dash-hero-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
   cursor: pointer;
-  transition: box-shadow 150ms ease;
-}
-
-.dash-avatar-lg:hover {
-  box-shadow: 0 0 0 3px rgba(232, 71, 43, 0.2);
-}
-
-.dash-view-profile-text-btn {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--accent);
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-top: 5px;
-  text-align: left;
-  cursor: pointer;
-  width: fit-content;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 150ms ease;
-}
-
-.dash-view-profile-text-btn:hover {
-  color: var(--accent-hover);
 }
 
 .dash-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
 }
 
-.dash-header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.dash-hero-roll {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 6px 0 0;
+  white-space: nowrap;
 }
 
-.dash-name {
-  font-size: 19px;
-  font-weight: 700;
-  color: #111111;
-  line-height: 1.2;
+.dash-hero-reg {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 1px 0 0;
+  white-space: nowrap;
 }
 
-.dash-meta {
-  font-size: 13px;
-  color: #666666;
-  line-height: 1.4;
-}
-
-.dash-meta strong {
-  color: #111111;
-  font-weight: 600;
-}
-
-.dash-header-right {
+.dash-hero-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.dash-logout-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+.dash-view-profile-pill {
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  padding: 5px 12px;
+  border-radius: 20px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.dash-view-profile-pill:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dash-logout-pill {
+  width: 26px;
+  height: 26px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666666;
-  border: 1px solid #e0e0e0;
-  background: transparent;
-  transition: all 150ms ease;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  cursor: pointer;
   flex-shrink: 0;
+  transition: background 150ms ease;
 }
 
-.dash-logout-btn:hover {
-  color: #111111;
-  background: rgba(0, 0, 0, 0.05);
-  border-color: #bbbbbb;
+.dash-logout-pill:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-@media (max-width: 540px) {
-  .dash-header-card {
-    padding: 16px 18px;
-  }
-  .dash-avatar-lg {
-    width: 64px;
-    height: 64px;
-    font-size: 22px;
-  }
+/* ── 2-Column Twin Row (Date + Mood) ────────────────────────── */
+.dash-twin-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 4px;
 }
 
-/* Row layout */
-.dash-row {
+.dash-mini-card {
+  background: #f8fafc;
+  border: 0.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  position: relative;
   display: flex;
-  gap: 16px;
+  flex-direction: column;
 }
 
-.dash-row-half > .dash-card {
+.dash-mini-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+.dash-mini-big {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 6px 0 0;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.dash-mini-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.dash-mini-card-mood {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-mini-mood-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-mini-mood-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash-mini-mood-edit-btn,
+.dash-mini-mood-remove-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.dash-mini-mood-edit-btn:hover { color: #0f172a; }
+.dash-mini-mood-remove-btn:hover { color: #ef4444; }
+
+.dash-mini-mood-text {
+  font-size: 13px;
+  color: #111111;
+  font-weight: 600;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-mini-mood-input-area {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Section Container ─────────────────────────────────────── */
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.dash-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dash-see-all-btn {
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dash-no-exams,
+.dash-no-assignments {
+  border: 0.5px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Exam Cards List (Orange Theme Vibe) */
+.dash-exam-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-exam-card {
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 16px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dash-exam-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(232, 71, 43, 0.12);
+}
+
+.dash-exam-card-urgent {
+  background: rgba(232, 71, 43, 0.16);
+  border: none;
+}
+
+.dash-exam-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dash-exam-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 
-/* dash-row-half always stays side-by-side (50/50) on all screen sizes */
-
-/* Generic card */
-.dash-card {
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 20px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-}
-
-.dash-card:hover {
-  border-color: #cccccc;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-}
-
-.dash-card-full {
-  flex: 1;
-  width: 100%;
-}
-
-.dash-card-section-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #888888;
-  margin-bottom: 2px;
-  display: block;
-}
-
-/* Date Widget — dark #111111 background */
-.dash-card-date {
-  background: #111111;
-  border-color: #222222;
-  padding: 14px 18px;
-}
-
-.dash-card-mood {
-  padding: 14px 18px;
-}
-
-.dash-card-date .dash-card-section-label {
-  color: rgba(255,255,255,0.45);
-}
-
-.date-day-num {
-  font-size: 42px;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1;
-  letter-spacing: -1.5px;
-  margin-top: 2px;
-}
-
-.date-day-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.75);
-}
-
-.date-month-year {
-  font-size: 12.5px;
-  color: rgba(255,255,255,0.45);
-  margin-top: 1px;
-}
-
-/* Mood Widget */
-.mood-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2px;
-}
-
-.mood-change-btn {
-  font-size: 11px;
-  font-weight: 600;
+.dash-exam-card-room {
+  font-size: 12px;
   color: var(--accent);
-  padding: 3px 8px;
-  border-radius: 7px;
-  background: var(--accent-soft);
-  border: none;
-  cursor: pointer;
-}
-
-.mood-selected-display {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  padding-top: 2px;
-}
-
-.mood-selected-text {
-  font-size: 16px;
+  opacity: 0.9;
+  margin: 0 0 2px;
   font-weight: 600;
+}
+
+.dash-exam-card-urgent .dash-exam-card-room {
+  color: var(--accent);
+}
+
+.dash-exam-card-subject {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
   color: #111111;
   line-height: 1.3;
 }
 
-/* Mood Text Input */
-.mood-input-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mood-text-input {
-  width: 100%;
-  padding: 9px 14px;
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-  border-radius: 10px;
+.dash-exam-card-urgent .dash-exam-card-subject {
   color: #111111;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 150ms;
-  box-sizing: border-box;
 }
 
-.mood-text-input::placeholder { color: #999999; }
-
-.mood-text-input:focus {
-  border-color: #888888;
+.dash-exam-card-days {
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.mood-input-footer {
+.dash-exam-today-badge {
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--accent);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.dash-exam-days-num {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 0.9;
+  color: var(--accent);
+  display: block;
+}
+
+.dash-exam-card-urgent .dash-exam-days-num {
+  color: var(--accent);
+}
+
+.dash-exam-days-label {
+  font-size: 10px;
+  color: #666666;
+  font-weight: 600;
+  margin-top: 2px;
+  display: block;
+}
+
+.dash-exam-card-urgent .dash-exam-days-label {
+  color: #666666;
+}
+
+.dash-exam-card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  border-top: 0.5px solid var(--accent-border);
+  padding-top: 10px;
 }
 
-.mood-char-count {
-  font-size: 11px;
-  color: #aaaaaa;
-  font-variant-numeric: tabular-nums;
+.dash-exam-card-urgent .dash-exam-card-bottom {
+  border-top-color: var(--accent-border);
 }
 
-.mood-input-btns {
-  display: flex;
-  gap: 6px;
-}
-
-.mood-save-btn {
-  padding: 5px 12px;
-  background: #111111;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
+.dash-exam-card-date {
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 150ms;
-}
-
-.mood-save-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.mood-cancel-btn {
-  padding: 5px 10px;
-  background: transparent;
-  color: #666666;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
-  font-size: 12px;
+  color: #555555;
   font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 150ms;
 }
 
-.mood-cancel-btn:hover { border-color: #888888; color: #111111; }
-
-.mood-actions-row {
-  display: flex;
-  gap: 6px;
-}
-
-.mood-remove-btn {
-  color: #cc3333 !important;
-  border-color: #cc3333 !important;
-}
-
-.mood-remove-btn:hover {
-  background: #fff0f0 !important;
-}
-
-/* Countdown / Next Exam */
-.dash-card-countdown { gap: 12px; }
-
-.countdown-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.countdown-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.countdown-subject-text {
-  font-size: 17px;
-  font-weight: 700;
-  color: #111111;
-}
-
-.countdown-date-text {
-  font-size: 13.5px;
+.dash-exam-card-urgent .dash-exam-card-date {
   color: #555555;
 }
 
-.countdown-time-text, .countdown-room-text {
-  font-size: 13px;
-  color: #777777;
-}
-
-.countdown-right {
+.dash-exam-arrow-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #111111;
+  color: #ffffff;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  min-width: 90px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.days-today-badge {
-  font-size: 13px;
-  font-weight: 800;
+.dash-exam-arrow-btn:hover {
+  transform: scale(1.08);
   background: var(--accent);
-  color: #FFF;
-  padding: 6px 12px;
-  border-radius: 8px;
-  letter-spacing: 0.04em;
 }
-
-.days-num-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0;
-}
-
-.days-big-num {
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--accent);
-  letter-spacing: -1px;
-}
-
-.days-unit-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #888888;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.countdown-bar-track {
-  width: 80px;
-  height: 6px;
-  background: #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.countdown-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent) 0%, #FF7F50 100%);
-  border-radius: 4px;
-}
-
-.countdown-empty {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #888888;
-  font-size: 14px;
-  padding: 8px 0;
-}
-
-/* Assignments */
-.dash-card-assignments { min-height: 90px; }
-
-.assignments-placeholder {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #888888;
-  padding: 6px 0;
-}
-
-.assignments-placeholder p { font-size: 14px; }
 
 /* ── Modals & Profile ───────────────────────────────────────────────── */
 .modal-overlay {

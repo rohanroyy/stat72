@@ -1,7 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
-export default function Dashboard({ student: initialStudent, exams = [], onProfileUpdate, onLogout }) {
+// Motivational quotes shown in header
+const QUOTES = [
+  "PDF download করলেই পড়া হয় না ",
+  "জীবনটা এখন একটা Random Variable.",
+  "Probability of studying today: 0.03",
+  "মামা, একটু পড়লেও ক্ষতি নেই",
+  "CGPA won't increase by refreshing this page.",
+  "Brain not found. Please restart with tea.",
+  "Life is short. Syllabus is long.",
+  "ঘুমের সাথে commitment, পড়ার সাথে situationship.",
+  "বাহাত্তর খুলেছো, এখন একটু পড়োও!",
+  "মামা, PDF এরও feelings আছে, একবার খুলে দেখো",
+  "একটা chapter শেষ করো, তারপর reels দেখো",
+  "রাত ২টার motivation এর উপর ভরসা কোরো না",
+  "Mean আছে, Pain আরও বেশি",
+  "Regression চলছে... জীবনেরও",
+  "৭২ মানেই একসাথে survive করা",
+  "Refresh দিলে নতুন routine আসবে না",
+  "Stay hydrated. Stay graduated.",
+];
+
+export default function Dashboard({ student: initialStudent, exams = [], onProfileUpdate, onLogout, onChangeTab }) {
   const [student, setStudent] = useState(initialStudent);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -22,6 +43,9 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   });
   const [picPreview, setPicPreview] = useState(null);
   const picInputRef = useRef(null);
+
+  // Pick a stable daily quote
+  const quote = QUOTES[new Date().getDate() % QUOTES.length];
 
   useEffect(() => {
     setStudent(initialStudent);
@@ -46,11 +70,10 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
       if (!data || data.length === 0) {
         throw new Error(
-          "Database update failed: No rows were updated. This usually happens if your Supabase Row Level Security (RLS) policies are misconfigured or your login session has expired. Please run the SQL queries in 'supabase/schema.sql' to configure RLS, or try logging out and logging back in."
+          "Database update failed: No rows were updated. Check your Supabase RLS policies."
         );
       }
 
-      // Keep localStorage in sync so page refresh shows fresh data
       const merged = { ...student, ...updatedFields };
       localStorage.setItem('bahattor_logged_in_student', JSON.stringify(merged));
     } else {
@@ -99,9 +122,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPicPreview(ev.target.result);
-    };
+    reader.onload = (ev) => { setPicPreview(ev.target.result); };
     reader.readAsDataURL(file);
   };
 
@@ -110,16 +131,12 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let w = img.width;
-        let h = img.height;
-        // Resize to max 400x400
+        let w = img.width, h = img.height;
         const MAX = 400;
         if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
         else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-        canvas.width = w;
-        canvas.height = h;
+        canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        // Reduce quality until under maxSizeKB
         let quality = 0.85;
         let result = canvas.toDataURL('image/jpeg', quality);
         while (result.length / 1024 > maxSizeKB && quality > 0.3) {
@@ -172,7 +189,6 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     }
 
     try {
-      // Compress image before saving if there's a new preview
       let picToSave = profilePic;
       if (picPreview) {
         picToSave = await compressImage(picPreview, 200);
@@ -188,7 +204,6 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         profile_picture: picToSave
       };
       await persistStudentUpdate(updatedFields);
-      // Only update local state AFTER successful DB/localStorage write
       applyPicSave(picToSave === profilePic ? null : picToSave);
       const updated = { ...student, ...updatedFields };
       setStudent(updated);
@@ -196,28 +211,30 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
       setIsEditing(false);
       setShowProfileModal(false);
     } catch (err) {
-      setEditError(err.message || 'Failed to update profile. Make sure your database has the latest schema (run: ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_picture TEXT;)');
+      setEditError(err.message || 'Failed to update profile.');
     } finally {
       setSaveLoading(false);
     }
   };
 
+  // Date helpers
   const today = new Date();
   const dateNum = today.getDate();
-  const monthName = today.toLocaleDateString('en-US', { month: 'long' });
+  const monthName = today.toLocaleDateString('en-US', { month: 'short' });
   const yearNum = today.getFullYear();
-  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'short' });
 
+  // Get ALL exams this month (from today onwards)
   const todayStr = today.toISOString().split('T')[0];
-  const upcomingExams = exams.filter(e => e.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
-  const nextExam = upcomingExams[0];
-  let remainingDays = null, progressPct = 0;
-  if (nextExam) {
-    const examDate = new Date(nextExam.date + 'T00:00:00');
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    remainingDays = Math.ceil((examDate - todayMidnight) / (1000 * 60 * 60 * 24));
-    progressPct = Math.max(0, Math.min(100, ((30 - remainingDays) / 30) * 100));
-  }
+  const thisMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString().split('T')[0];
+
+  const monthExams = exams
+    .filter(e => e.date >= todayStr && e.date < nextMonthStart)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // First name only for greeting
+  const firstName = student.name ? student.name.split(' ')[0] : 'there';
 
   const initials = student.name
     ? student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -225,41 +242,65 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
   const displayPic = picPreview || profilePic;
 
+  // Compute remaining days for an exam
+  const getDaysLeft = (examDateStr) => {
+    const examDate = new Date(examDateStr + 'T00:00:00');
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return Math.ceil((examDate - todayMidnight) / (1000 * 60 * 60 * 24));
+  };
+
+  // Format exam date nicely
+  const formatExamDate = (dateStr, time, room) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    let parts = [`${dayLabel}, ${dateLabel}`];
+    if (time) parts.push(time);
+    if (room) parts.push(room);
+    return parts.join(' · ');
+  };
+
   return (
     <div className="dash-page">
-      {/* Header */}
-      <div className="dash-header-card">
-        <div className="dash-header-left">
-          <div
-            className="dash-avatar-lg"
-            onClick={() => { setIsEditing(false); setEditForm({ ...student }); setShowProfileModal(true); }}
-            title="View Profile"
-          >
-            {displayPic
-              ? <img src={displayPic} alt="Profile" className="dash-avatar-img" />
-              : <span>{initials}</span>
-            }
+
+      {/* ── Hero Header ──────────────────────────────────────────── */}
+      <div className="dash-hero">
+        <div className="dash-hero-top">
+          <div className="dash-hero-text">
+            <p className="dash-hero-greeting">Hey {firstName}</p>
+            <p className="dash-hero-quote">{quote}</p>
           </div>
-          <div className="dash-header-info">
-            <h2 className="dash-name">{student.name}</h2>
-            <p className="dash-meta">Roll: <strong>{student.class_roll}</strong></p>
-            <p className="dash-meta">Reg: <strong>{student.registration_number}</strong></p>
-            <button
-              className="dash-view-profile-text-btn"
+          <div className="dash-hero-avatar-col">
+            <div
+              className="dash-hero-avatar"
               onClick={() => { setIsEditing(false); setEditForm({ ...student }); setShowProfileModal(true); }}
+              title="View Profile"
             >
-              View Profile
-            </button>
+              {displayPic
+                ? <img src={displayPic} alt="Profile" className="dash-avatar-img" />
+                : <span>{initials}</span>
+              }
+            </div>
+            <p className="dash-hero-roll">Roll {student.class_roll}</p>
+            <p className="dash-hero-reg">Reg {student.registration_number}</p>
           </div>
         </div>
-        <div className="dash-header-right">
+
+        <div className="dash-hero-actions">
           <button
-            className="dash-logout-btn"
-            onClick={onLogout}
-            title="Logout"
-            aria-label="Logout"
+            className="dash-view-profile-pill"
+            onClick={() => { setIsEditing(false); setEditForm({ ...student }); setShowProfileModal(true); }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            View profile
+          </button>
+          <button
+            className="dash-logout-pill"
+            onClick={onLogout}
+            aria-label="Log out"
+            title="Log out"
+          >
+            {/* logout icon */}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
@@ -268,31 +309,46 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         </div>
       </div>
 
-      {/* Row 1: Date + Mood 50/50 */}
-      <div className="dash-row dash-row-half">
-        <div className="dash-card dash-card-date">
-          <span className="dash-card-section-label">Today</span>
-          <div className="date-day-num">{dateNum}</div>
-          <div className="date-day-name">{dayName}</div>
-          <div className="date-month-year">{monthName} {yearNum}</div>
+      {/* ── Date + Mood 50/50 ────────────────────────────────────── */}
+      <div className="dash-twin-row">
+
+        {/* Date card */}
+        <div className="dash-mini-card">
+          <p className="dash-mini-label">Today</p>
+          <p className="dash-mini-big">{dateNum}</p>
+          <p className="dash-mini-sub">{dayName}, {monthName} {yearNum}</p>
         </div>
 
-        <div className="dash-card dash-card-mood">
-          <div className="mood-header">
-            <span className="dash-card-section-label">Mood</span>
+        {/* Mood card */}
+        <div className="dash-mini-card dash-mini-card-mood">
+          <div className="dash-mini-mood-header">
+            <p className="dash-mini-label">Mood</p>
             {student.mood && !moodEditing && (
-              <div className="mood-actions-row">
-                <button className="mood-change-btn" onClick={() => { setMoodInput(student.mood); setMoodEditing(true); }}>Edit</button>
-                <button className="mood-change-btn mood-remove-btn" onClick={handleClearMood}>Remove</button>
+              <div className="dash-mini-mood-actions">
+                <button
+                  className="dash-mini-mood-edit-btn"
+                  onClick={() => { setMoodInput(student.mood); setMoodEditing(true); }}
+                  title="Edit mood"
+                >
+                  {/* pencil icon */}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button
+                  className="dash-mini-mood-remove-btn"
+                  onClick={handleClearMood}
+                  title="Remove mood"
+                >×</button>
               </div>
             )}
           </div>
+
           {student.mood && !moodEditing ? (
-            <div className="mood-selected-display">
-              <span className="mood-selected-text">{student.mood}</span>
-            </div>
+            <p className="dash-mini-sub dash-mini-mood-text">{student.mood}</p>
           ) : (
-            <div className="mood-input-wrapper">
+            <div className="dash-mini-mood-input-area">
               <input
                 className="mood-text-input"
                 type="text"
@@ -300,7 +356,10 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
                 maxLength={30}
                 value={moodInput}
                 onChange={e => setMoodInput(e.target.value.slice(0, 30))}
-                onKeyDown={e => { if (e.key === 'Enter') handleMoodSave(); if (e.key === 'Escape') { setMoodEditing(false); setMoodInput(''); } }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleMoodSave();
+                  if (e.key === 'Escape') { setMoodEditing(false); setMoodInput(''); }
+                }}
               />
               <div className="mood-input-footer">
                 <span className="mood-char-count">{moodInput.length}/30</span>
@@ -314,63 +373,91 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             </div>
           )}
         </div>
+
       </div>
 
-      {/* Row 2: Upcoming Events */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-full dash-card-countdown">
-          <span className="dash-card-section-label">Next Exam</span>
-          {nextExam ? (
-            <div className="countdown-inner">
-              <div className="countdown-left">
-                <span className="countdown-subject-text">{nextExam.subject}</span>
-                <span className="countdown-date-text">
-                  {new Date(nextExam.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
-                </span>
-                {nextExam.time && <span className="countdown-time-text">{nextExam.time}{nextExam.duration ? ` · ${nextExam.duration}` : ''}</span>}
-                {nextExam.room && <span className="countdown-room-text">📍 {nextExam.room}</span>}
-              </div>
-              <div className="countdown-right">
-                {remainingDays === 0 ? (
-                  <span className="days-today-badge">TODAY</span>
-                ) : (
-                  <div className="days-num-wrapper">
-                    <span className="days-big-num">{remainingDays}</span>
-                    <span className="days-unit-label">days left</span>
-                  </div>
-                )}
-                <div className="countdown-bar-track">
-                  <div className="countdown-bar-fill" style={{ width: remainingDays === 0 ? '100%' : `${progressPct}%` }} />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="countdown-empty">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span>No upcoming exams scheduled</span>
-            </div>
-          )}
+      {/* ── Upcoming Exams this month ────────────────────────────── */}
+      <div className="dash-section">
+        <div className="dash-section-header">
+          <span className="dash-section-title">Upcoming exam</span>
+          <button className="dash-see-all-btn" onClick={() => onChangeTab && onChangeTab('calendar')}>See all</button>
         </div>
-      </div>
 
-      {/* Row 3: Assignments */}
-      <div className="dash-row">
-        <div className="dash-card dash-card-full dash-card-assignments">
-          <span className="dash-card-section-label">Assignments</span>
-          <div className="assignments-placeholder">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+        {monthExams.length === 0 ? (
+          <div className="dash-no-exams">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
-            <p>No assignments yet</p>
+            <span>No upcoming exams this month</span>
           </div>
+        ) : (
+          <div className="dash-exam-cards-list">
+            {monthExams.map((exam, idx) => {
+              const daysLeft = getDaysLeft(exam.date);
+              const isUrgent = daysLeft <= 3;
+              const isToday = daysLeft === 0;
+              return (
+                <div key={exam.id || idx} className={`dash-exam-card ${isUrgent ? 'dash-exam-card-urgent' : ''}`}>
+                  <div className="dash-exam-card-top">
+                    <div className="dash-exam-card-info">
+                      {exam.room && (
+                        <p className="dash-exam-card-room">
+                          {exam.subject?.split(' ').slice(0, 2).join('.')} · {exam.room}
+                        </p>
+                      )}
+                      <p className="dash-exam-card-subject">{exam.subject}</p>
+                    </div>
+                    <div className="dash-exam-card-days">
+                      {isToday ? (
+                        <span className="dash-exam-today-badge">TODAY</span>
+                      ) : (
+                        <>
+                          <span className="dash-exam-days-num">{daysLeft}</span>
+                          <span className="dash-exam-days-label">days left</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="dash-exam-card-bottom">
+                    <span className="dash-exam-card-date">
+                      {formatExamDate(exam.date, exam.time, exam.room)}
+                    </span>
+                    <button
+                      className="dash-exam-arrow-btn"
+                      onClick={() => onChangeTab && onChangeTab('calendar')}
+                      title="View in calendar"
+                      aria-label="Open calendar"
+                    >
+                      {/* arrow up-right */}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7" />
+                        <polyline points="7 7 17 7 17 17" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Assignments ──────────────────────────────────────────── */}
+      <div className="dash-section">
+        <div className="dash-section-header">
+          <span className="dash-section-title">Assignments</span>
+        </div>
+        <div className="dash-no-assignments">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+            <polyline points="13 2 13 9 20 9" />
+          </svg>
+          <span>No assignments yet</span>
         </div>
       </div>
 
-      {/* Profile Modal */}
+      {/* ── Profile Modal ────────────────────────────────────────── */}
       {showProfileModal && (
         <div className="modal-overlay" onClick={() => { setShowProfileModal(false); setIsEditing(false); setPicPreview(null); }}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>

@@ -635,6 +635,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           exams={examsList}
           onProfileUpdate={handleProfileUpdate}
           onLogout={handleLogout}
+          onChangeTab={navigateToTab}
         />
       );
     }
