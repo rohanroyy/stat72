@@ -3,23 +3,13 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 // Motivational quotes shown in header
 const QUOTES = [
-  "PDF download করলেই পড়া হয় না ",
-  "জীবনটা এখন একটা Random Variable.",
-  "Probability of studying today: 0.03",
-  "মামা, একটু পড়লেও ক্ষতি নেই",
-  "CGPA won't increase by refreshing this page.",
-  "Brain not found. Please restart with tea.",
-  "Life is short. Syllabus is long.",
-  "ঘুমের সাথে commitment, পড়ার সাথে situationship.",
-  "বাহাত্তর খুলেছো, এখন একটু পড়োও!",
-  "মামা, PDF এরও feelings আছে, একবার খুলে দেখো",
-  "একটা chapter শেষ করো, তারপর reels দেখো",
-  "রাত ২টার motivation এর উপর ভরসা কোরো না",
-  "Mean আছে, Pain আরও বেশি",
-  "Regression চলছে... জীবনেরও",
-  "৭২ মানেই একসাথে survive করা",
-  "Refresh দিলে নতুন routine আসবে না",
-  "Stay hydrated. Stay graduated.",
+  'Small steps today, big results tomorrow.',
+  'Focus on progress, not perfection.',
+  'Every expert was once a beginner.',
+  'Study hard, dream big, achieve more.',
+  'Consistency beats talent every time.',
+  'Your future self will thank you.',
+  'One page at a time, one day at a time.',
 ];
 
 export default function Dashboard({ student: initialStudent, exams = [], onProfileUpdate, onLogout, onChangeTab }) {
@@ -89,7 +79,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   };
 
   const handleMoodSave = async () => {
-    const trimmed = moodInput.trim().slice(0, 30);
+    const trimmed = moodInput.trim().slice(0, 40);
     if (!trimmed) return;
     const updatedFields = { mood: trimmed, mood_selected_at: new Date().toISOString() };
     try {
@@ -219,14 +209,13 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
   // Date helpers
   const today = new Date();
-  const dateNum = today.getDate();
+  const dateNum  = today.getDate();
   const monthName = today.toLocaleDateString('en-US', { month: 'short' });
-  const yearNum = today.getFullYear();
-  const dayName = today.toLocaleDateString('en-US', { weekday: 'short' });
+  const yearNum   = today.getFullYear();
+  const dayName   = today.toLocaleDateString('en-US', { weekday: 'short' });
 
   // Get ALL exams this month (from today onwards)
   const todayStr = today.toISOString().split('T')[0];
-  const thisMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
   const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString().split('T')[0];
 
   const monthExams = exams
@@ -249,14 +238,75 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
     return Math.ceil((examDate - todayMidnight) / (1000 * 60 * 60 * 24));
   };
 
-  // Format exam date nicely
-  const formatExamDate = (dateStr, time, room) => {
+  // Intelligently parse exam subject into course code (e.g. STAT H-305) & course title
+  const parseExamSubject = (exam) => {
+    const full = (exam.subject || '').trim();
+    
+    if (full.includes(':')) {
+      const parts = full.split(':');
+      return {
+        code: parts[0].trim(),
+        name: parts.slice(1).join(':').trim()
+      };
+    }
+
+    if (full.includes(' - ')) {
+      const parts = full.split(' - ');
+      return {
+        code: parts[0].trim(),
+        name: parts.slice(1).join(' - ').trim()
+      };
+    }
+
+    const match = full.match(/^([A-Z]{2,6}\s*(?:H-?)?\d+[A-Z]?)\s+(.+)$/i);
+    if (match) {
+      return {
+        code: match[1].trim(),
+        name: match[2].trim()
+      };
+    }
+
+    if (/^[A-Z]{2,6}\s*(?:H-?)?\d+[A-Z]?$/i.test(full)) {
+      return {
+        code: full,
+        name: exam.notes || 'Course Exam'
+      };
+    }
+
+    return {
+      code: 'STAT',
+      name: full
+    };
+  };
+
+  // Format 12-hour time (e.g. 13:30 -> 1:30 PM)
+  const format12HourTime = (timeStr) => {
+    if (!timeStr) return '';
+    if (/am|pm/i.test(timeStr)) return timeStr;
+    const [h, m] = timeStr.split(':');
+    if (h === undefined) return timeStr;
+    let hours = parseInt(h, 10);
+    if (isNaN(hours)) return timeStr;
+    const minutes = m ? m.slice(0, 2) : '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  // Format exam card footer text: Date, 12-hour time, Room location
+  const formatExamFooter = (dateStr, timeStr, roomStr) => {
     const d = new Date(dateStr + 'T00:00:00');
     const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
     const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     let parts = [`${dayLabel}, ${dateLabel}`];
-    if (time) parts.push(time);
-    if (room) parts.push(room);
+    if (timeStr) {
+      parts.push(format12HourTime(timeStr));
+    }
+    if (roomStr) {
+      const cleanRoom = roomStr.toLowerCase().includes('room') ? roomStr : `Room ${roomStr}`;
+      parts.push(cleanRoom);
+    }
     return parts.join(' · ');
   };
 
@@ -353,20 +403,18 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
                 className="mood-text-input"
                 type="text"
                 placeholder="How are you feeling?"
-                maxLength={30}
+                maxLength={40}
                 value={moodInput}
-                onChange={e => setMoodInput(e.target.value.slice(0, 30))}
+                onChange={e => setMoodInput(e.target.value.slice(0, 40))}
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleMoodSave();
                   if (e.key === 'Escape') { setMoodEditing(false); setMoodInput(''); }
                 }}
               />
               <div className="mood-input-footer">
-                <span className="mood-char-count">{moodInput.length}/30</span>
+                <span className="mood-char-count">{moodInput.length}/40</span>
                 <div className="mood-input-btns">
-                  {moodEditing && (
-                    <button className="mood-cancel-btn" onClick={() => { setMoodEditing(false); setMoodInput(''); }}>Cancel</button>
-                  )}
+                  <button className="mood-cancel-btn" onClick={() => { setMoodEditing(false); setMoodInput(''); }}>Cancel</button>
                   <button className="mood-save-btn" onClick={handleMoodSave} disabled={!moodInput.trim()}>Save</button>
                 </div>
               </div>
@@ -395,17 +443,15 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             {monthExams.map((exam, idx) => {
               const daysLeft = getDaysLeft(exam.date);
               const isUrgent = daysLeft <= 3;
-              const isToday = daysLeft === 0;
+              const isToday  = daysLeft === 0;
+              const parsed   = parseExamSubject(exam);
+
               return (
                 <div key={exam.id || idx} className={`dash-exam-card ${isUrgent ? 'dash-exam-card-urgent' : ''}`}>
                   <div className="dash-exam-card-top">
                     <div className="dash-exam-card-info">
-                      {exam.room && (
-                        <p className="dash-exam-card-room">
-                          {exam.subject?.split(' ').slice(0, 2).join('.')} · {exam.room}
-                        </p>
-                      )}
-                      <p className="dash-exam-card-subject">{exam.subject}</p>
+                      <p className="dash-exam-card-code">{parsed.code}</p>
+                      <p className="dash-exam-card-subject">{parsed.name}</p>
                     </div>
                     <div className="dash-exam-card-days">
                       {isToday ? (
@@ -421,7 +467,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
                   <div className="dash-exam-card-bottom">
                     <span className="dash-exam-card-date">
-                      {formatExamDate(exam.date, exam.time, exam.room)}
+                      {formatExamFooter(exam.date, exam.time, exam.room)}
                     </span>
                     <button
                       className="dash-exam-arrow-btn"

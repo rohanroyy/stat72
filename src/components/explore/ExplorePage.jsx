@@ -1,6 +1,118 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import ImposterGame from './ImposterGame';
+
+// Sub-component for individual draggable floating mood bubble with 60FPS direct DOM drag handling
+function FloatingMoodBubble({ student, style, initials }) {
+  const bubbleRef = useRef(null);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ mouseX: 0, mouseY: 0, startX: 0, startY: 0 });
+  const currentPos = useRef({ x: 0, y: 0 });
+
+  const handleStart = (e) => {
+    // Only primary mouse button or touch
+    if (e.button !== undefined && e.button !== 0) return;
+
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    if (clientX === undefined || clientY === undefined) return;
+
+    setIsDragging(true);
+    dragStart.current = {
+      mouseX: clientX,
+      mouseY: clientY,
+      startX: currentPos.current.x,
+      startY: currentPos.current.y
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const el = bubbleRef.current;
+    if (el) {
+      el.style.transition = 'none';
+      el.style.animation = 'none';
+    }
+
+    const handleMove = (e) => {
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      if (clientX === undefined || clientY === undefined) return;
+
+      const dx = clientX - dragStart.current.mouseX;
+      const dy = clientY - dragStart.current.mouseY;
+
+      const newX = dragStart.current.startX + dx;
+      const newY = dragStart.current.startY + dy;
+
+      currentPos.current = { x: newX, y: newY };
+
+      if (el) {
+        el.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+      }
+    };
+
+    const handleEnd = () => {
+      setIsDragging(false);
+      setPos(currentPos.current);
+    };
+
+    window.addEventListener('mousemove', handleMove, { passive: false });
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
+    };
+  }, [isDragging]);
+
+  return (
+    <div
+      ref={bubbleRef}
+      className={`mood-bubble-wrapper ${isDragging ? 'is-dragging' : ''}`}
+      onMouseDown={handleStart}
+      onTouchStart={handleStart}
+      style={{
+        left: style.left,
+        top: style.top,
+        animationName: isDragging ? 'none' : style.animationName,
+        animationDuration: style.animationDuration,
+        animationDelay: style.animationDelay,
+        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        zIndex: isDragging ? 999 : undefined,
+        transition: isDragging ? 'none' : undefined,
+        '--dx1': style['--dx1'],
+        '--dy1': style['--dy1'],
+        '--dx2': style['--dx2'],
+        '--dy2': style['--dy2']
+      }}
+    >
+      {/* Speech bubble at the top */}
+      <div className="mood-bubble-content">
+        <span className="mood-emoji-text">{student.mood}</span>
+      </div>
+
+      {/* Profile avatar at the bottom */}
+      <div className="mood-bubble-avatar">
+        {student.profile_picture ? (
+          <img src={student.profile_picture} alt={student.name} draggable={false} />
+        ) : (
+          <span>{initials}</span>
+        )}
+      </div>
+      <div className="mood-bubble-tooltip">{student.name}</div>
+    </div>
+  );
+}
 
 export default function ExplorePage() {
   const [students, setStudents] = useState([]);
@@ -39,15 +151,15 @@ export default function ExplorePage() {
         // Distribute starting positions nicely
         const left = 5 + (idx * 37) % 70; // 5% to 75%
         const top = 10 + (idx * 29) % 60; // 10% to 70%
-        const speed = 12 + (idx * 4) % 12; // 12s to 24s
+        const speed = 14 + (idx * 4) % 12; // 14s to 26s slow smooth speed
         const delay = -((idx * 3) % 15); // negative delay
         const animIdx = (idx % 3) + 1; // drift-1, drift-2, drift-3
         
-        // Generate random floating direction offsets each time
-        const dx1 = Math.floor(Math.random() * 60) - 30; // -30px to +30px
-        const dy1 = Math.floor(Math.random() * 60) - 30;
-        const dx2 = Math.floor(Math.random() * 60) - 30;
-        const dy2 = Math.floor(Math.random() * 60) - 30;
+        // Reduced floating direction offsets (-10px to +10px for subtle movement)
+        const dx1 = Math.floor(Math.random() * 20) - 10;
+        const dy1 = Math.floor(Math.random() * 20) - 10;
+        const dx2 = Math.floor(Math.random() * 20) - 10;
+        const dy2 = Math.floor(Math.random() * 20) - 10;
 
         return {
           left: `${left}%`,
@@ -98,36 +210,12 @@ export default function ExplorePage() {
                 const style = bubbleStyles[idx] || {};
 
                 return (
-                  <div
+                  <FloatingMoodBubble
                     key={student.id || idx}
-                    className="mood-bubble-wrapper"
-                    style={{
-                      left: style.left,
-                      top: style.top,
-                      animationName: style.animationName,
-                      animationDuration: style.animationDuration,
-                      animationDelay: style.animationDelay,
-                      '--dx1': style['--dx1'],
-                      '--dy1': style['--dy1'],
-                      '--dx2': style['--dx2'],
-                      '--dy2': style['--dy2']
-                    }}
-                  >
-                    {/* Speech bubble at the top */}
-                    <div className="mood-bubble-content">
-                      <span className="mood-emoji-text">{student.mood}</span>
-                    </div>
-
-                    {/* Profile avatar at the bottom */}
-                    <div className="mood-bubble-avatar">
-                      {student.profile_picture ? (
-                        <img src={student.profile_picture} alt={student.name} />
-                      ) : (
-                        <span>{initials}</span>
-                      )}
-                    </div>
-                    <div className="mood-bubble-tooltip">{student.name}</div>
-                  </div>
+                    student={student}
+                    style={style}
+                    initials={initials}
+                  />
                 );
               })}
             </div>
