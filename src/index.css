@@ -4753,3 +4753,58 @@ a:focus-visible {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
+
+/* ---------- Dashboard Notification Setup Banner ---------- */
+.dash-notif-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--accent-soft, rgba(232, 71, 43, 0.08));
+  border: 1px solid var(--border-hairline, rgba(232, 71, 43, 0.15));
+  padding: 12px 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.dash-notif-banner-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.dash-notif-banner-content {
+  flex-grow: 1;
+}
+
+.dash-notif-banner-content strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main, #111111);
+  margin-bottom: 2px;
+}
+
+.dash-notif-banner-content p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary, #666666);
+  line-height: 1.4;
+}
+
+.dash-notif-banner-btn {
+  background: var(--accent, #E8472B);
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: opacity 150ms ease;
+}
+
+.dash-notif-banner-btn:hover {
+  opacity: 0.9;
+}

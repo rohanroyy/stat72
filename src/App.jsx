@@ -28,6 +28,7 @@ import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
 import { initExamNotifications } from './services/notificationService';
+import { fetchBroadcastNotifications } from './services/broadcastService';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
@@ -280,6 +281,77 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     initExamNotifications(examsList);
   }, [examsList]);
 
+  const lastProcessedNotifRef = useRef(localStorage.getItem('bahattor_last_processed_notif_id') || '');
+
+  const processIncomingNotifications = useCallback((notifications, currentStudentId) => {
+    if (!notifications || notifications.length === 0) return;
+    
+    const sorted = [...notifications].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const lastId = lastProcessedNotifRef.current;
+    let newNotifs = [];
+
+    if (lastId) {
+      const idx = sorted.findIndex(n => n.id === lastId);
+      if (idx !== -1) {
+        newNotifs = sorted.slice(idx + 1);
+      } else {
+        const twoMinsAgo = Date.now() - 2 * 60 * 1000;
+        newNotifs = sorted.filter(n => new Date(n.created_at).getTime() > twoMinsAgo);
+      }
+    } else {
+      const twoMinsAgo = Date.now() - 2 * 60 * 1000;
+      newNotifs = sorted.filter(n => new Date(n.created_at).getTime() > twoMinsAgo);
+    }
+
+    if (newNotifs.length > 0) {
+      newNotifs.forEach(notif => {
+        if (notif.target === 'all' || notif.target === currentStudentId) {
+          if (Notification.permission === 'granted') {
+            const options = {
+              body: notif.body,
+              tag: notif.id,
+              icon: '/pwa-192x192.png',
+              badge: '/favicon.png',
+              requireInteraction: true,
+              data: { url: '/' }
+            };
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification(notif.title, options);
+              }).catch(() => new Notification(notif.title, options));
+            } else {
+              new Notification(notif.title, options);
+            }
+          }
+        }
+      });
+
+      const latestId = sorted[sorted.length - 1].id;
+      lastProcessedNotifRef.current = latestId;
+      localStorage.setItem('bahattor_last_processed_notif_id', latestId);
+    } else if (sorted.length > 0) {
+      const latestId = sorted[sorted.length - 1].id;
+      lastProcessedNotifRef.current = latestId;
+      localStorage.setItem('bahattor_last_processed_notif_id', latestId);
+    }
+  }, []);
+
+  // Initial check for broadcast notifications on boot
+  useEffect(() => {
+    fetchBroadcastNotifications()
+      .then((broadcasts) => {
+        const rawStudent = localStorage.getItem('bahattor_logged_in_student');
+        let currentStudentId = '';
+        if (rawStudent) {
+          try {
+            currentStudentId = JSON.parse(rawStudent).id;
+          } catch (_) {}
+        }
+        processIncomingNotifications(broadcasts, currentStudentId);
+      })
+      .catch(console.error);
+  }, [processIncomingNotifications]);
+
   // Supabase realtime + cross-tab sync
   useEffect(() => {
     const reloadExams = () => {
@@ -293,6 +365,16 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         const settings = await fetchAppSettings();
         if (settings.telegram) setTgConfig(settings.telegram);
         if (settings.googleApiKey) setRuntimeApiKey(settings.googleApiKey);
+
+        const broadcasts = await fetchBroadcastNotifications();
+        const rawStudent = localStorage.getItem('bahattor_logged_in_student');
+        let currentStudentId = '';
+        if (rawStudent) {
+          try {
+            currentStudentId = JSON.parse(rawStudent).id;
+          } catch (_) {}
+        }
+        processIncomingNotifications(broadcasts, currentStudentId);
       } catch (err) {
         console.error(err);
       }

@@ -34,6 +34,24 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   const [picPreview, setPicPreview] = useState(null);
   const picInputRef = useRef(null);
 
+  const [notifPermission, setNotifPermission] = useState(() => {
+    if (!('Notification' in window)) return 'unsupported';
+    return Notification.permission;
+  });
+
+  const handleRequestPermission = async () => {
+    if (!('Notification' in window)) return;
+    try {
+      const status = await Notification.requestPermission();
+      setNotifPermission(status);
+    } catch (err) {
+      console.error('Failed to request permission:', err);
+    }
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
   // Pick a stable daily quote
   const quote = QUOTES[new Date().getDate() % QUOTES.length];
 
@@ -404,6 +422,31 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
           </button>
         </div>
       </div>
+
+      {/* ── Notification Check Banner ────────────────────────────── */}
+      {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+        <div className="dash-notif-banner">
+          <div className="dash-notif-banner-icon">🔔</div>
+          <div className="dash-notif-banner-content">
+            {isIOS && !isStandalone ? (
+              <>
+                <strong>Enable push alerts</strong>
+                <p>Tap Share ➔ "Add to Home Screen" and launch the app from your home screen to get exam notifications.</p>
+              </>
+            ) : (
+              <>
+                <strong>Enable notifications</strong>
+                <p>Get push reminders for upcoming exams/events 3 days before at 10 AM.</p>
+              </>
+            )}
+          </div>
+          {!(isIOS && !isStandalone) && (
+            <button className="dash-notif-banner-btn" onClick={handleRequestPermission}>
+              Enable
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Date + Mood 50/50 ────────────────────────────────────── */}
       <div className="dash-twin-row">

@@ -8,6 +8,7 @@ import {
   applyCustomNamesToFolders,
 } from '../../services/telegramService';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification } from '../../services/broadcastService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -51,6 +52,38 @@ export default function AdminPage({
   const [examRoom, setExamRoom] = useState('');
   const [examNotes, setExamNotes] = useState('');
   const [examSaveStatus, setExamSaveStatus] = useState('');
+
+  // Notifications Panel states
+  const [students, setStudents] = useState([]);
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody] = useState('');
+  const [notifTarget, setNotifTarget] = useState('all');
+  const [notifSendStatus, setNotifSendStatus] = useState('');
+
+  useEffect(() => {
+    fetchAllStudents().then(setStudents).catch(err => console.error('Failed to load students:', err));
+    fetchBroadcastNotifications().then(setBroadcasts).catch(err => console.error('Failed to load broadcasts:', err));
+  }, []);
+
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+
+    setNotifSendStatus('Sending...');
+    try {
+      const updated = await sendBroadcastNotification(notifTitle, notifBody, notifTarget);
+      setBroadcasts(updated);
+      setNotifTitle('');
+      setNotifBody('');
+      setNotifSendStatus('Success: Notification published!');
+      
+      setTimeout(() => setNotifSendStatus(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setNotifSendStatus(`Error: ${err.message || 'Failed to send'}`);
+    }
+  };
 
 
   // Storage Bridge Sync state
@@ -387,6 +420,136 @@ export default function AdminPage({
       }}>
         <strong>Admin URL:</strong> Open <code>https://stat72du.vercel.app/?admin=true</code> (or <code>?page=admin</code>). Locally: <code>http://localhost:5173/?admin=true</code>. Share only with authorized personnel.
       </div>
+
+      {/* ── Admin Notification Panel ────────────────────────────── */}
+      <section className="admin-section" id="admin-notification-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          Send Push Notifications
+        </h3>
+        
+        <form onSubmit={handleSendNotification}>
+          <div className="admin-form-grid" style={{ gap: '16px' }}>
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="notif-target">Target Recipients</label>
+              <select
+                id="notif-target"
+                className="admin-input"
+                value={notifTarget}
+                onChange={(e) => setNotifTarget(e.target.value)}
+                style={{ width: '100%', height: '42px', padding: '0 12px', background: 'var(--bg-surface-2)', border: '1px solid var(--border-hairline)', color: 'var(--text-main)', borderRadius: 'var(--radius-sm)' }}
+              >
+                <option value="all">All Users (Broadcast)</option>
+                {students.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} (Roll: {s.class_roll} • Reg: {s.registration_number})
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="notif-title">Notification Title *</label>
+              <input
+                id="notif-title"
+                className="admin-input"
+                type="text"
+                placeholder="e.g. Class Rescheduled"
+                value={notifTitle}
+                onChange={(e) => setNotifTitle(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="admin-label" htmlFor="notif-body">Notification Message *</label>
+              <textarea
+                id="notif-body"
+                className="admin-input"
+                placeholder="Type your message here..."
+                value={notifBody}
+                onChange={(e) => setNotifBody(e.target.value)}
+                style={{
+                  minHeight: '80px',
+                  padding: '12px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  background: 'var(--bg-surface-2)',
+                  border: '1px solid var(--border-hairline)',
+                  color: 'var(--text-main)',
+                  borderRadius: 'var(--radius-sm)'
+                }}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+            <button
+              type="submit"
+              className="admin-btn"
+              disabled={!notifTitle.trim() || !notifBody.trim()}
+            >
+              Send Notification
+            </button>
+            {notifSendStatus && (
+              <span style={{
+                color: notifSendStatus.startsWith('Error') ? 'var(--accent)' : 'var(--gold-600)',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}>
+                {notifSendStatus}
+              </span>
+            )}
+          </div>
+        </form>
+
+        {/* Broadcast History list */}
+        {broadcasts.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <h4 style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', fontWeight: '600' }}>
+              Recent Notification Log
+            </h4>
+            <div className="admin-folders-list">
+              {broadcasts.map((b) => {
+                const targetStudent = students.find(s => s.id === b.target);
+                const targetLabel = b.target === 'all' 
+                  ? 'All Users' 
+                  : targetStudent 
+                    ? `${targetStudent.name} (Roll: ${targetStudent.class_roll})`
+                    : 'Selected User';
+
+                return (
+                  <div key={b.id} className="admin-folder-row-item" style={{ alignItems: 'flex-start' }}>
+                    <div className="admin-folder-info" style={{ gap: '2px' }}>
+                      <div className="admin-folder-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{b.title}</span>
+                        <span style={{
+                          fontSize: '10px',
+                          background: b.target === 'all' ? 'rgba(232, 71, 43, 0.1)' : 'rgba(82,0,224,0.1)',
+                          color: b.target === 'all' ? 'var(--accent)' : 'var(--navy-400)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: '600'
+                        }}>
+                          {targetLabel}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>{b.body}</div>
+                      <div className="admin-folder-link" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        Sent at: {new Date(b.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* ── Google API Key ───────────────────────────────────────────── */}
       <section className="admin-section">
