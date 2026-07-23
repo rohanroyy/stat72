@@ -16,6 +16,9 @@ export default defineConfig({
       },
     }),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['/favicon.png', '/pwa-192x192.png', '/pwa-512x512.png'],
       manifest: {
@@ -49,10 +52,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

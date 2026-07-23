@@ -27,6 +27,7 @@ import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscrib
 import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
+import { initExamNotifications } from './services/notificationService';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
@@ -273,6 +274,11 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   });
 
   const [examsList, setExamsList] = useState(() => initialData?.exams || []);
+
+  // Initialize push notifications for upcoming exams/events
+  useEffect(() => {
+    initExamNotifications(examsList);
+  }, [examsList]);
 
   // Supabase realtime + cross-tab sync
   useEffect(() => {
