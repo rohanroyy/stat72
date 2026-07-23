@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import lottie from 'lottie-web';
 import BottomNav from './components/layout/BottomNav';
 import RootFoldersList from './components/filemanager/RootFoldersList';
 import FileManagerContainer from './components/filemanager/FileManagerContainer';
@@ -25,10 +26,36 @@ import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/fol
 import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings } from './services/settingsService';
 import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
+import loadingAnimation from './assets/loading.json';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
 const EXAMS_BROADCAST_CHANNEL = 'studydock_exams_sync';
+
+function DatabaseLoader() {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const anim = lottie.loadAnimation({
+      container: containerRef.current,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      animationData: loadingAnimation,
+    });
+    return () => anim.destroy();
+  }, []);
+
+  return (
+    <div className="fullscreen-loader">
+      <div className="loader-animation-wrap">
+        <div ref={containerRef} style={{ width: '140px', height: '140px' }} />
+      </div>
+      <p className="loader-text">Loading</p>
+    </div>
+  );
+}
 
 export default function App() {
   const [bootState, setBootState] = useState({ loading: true, error: null, data: null });
@@ -75,15 +102,7 @@ export default function App() {
   }, []);
 
   if (bootState.loading) {
-    return (
-      <div className="setup-screen">
-        <div className="setup-logo">Bahattor</div>
-        <div className="setup-card" style={{ textAlign: 'center' }}>
-          <div className="pdf-loading-spinner" style={{ margin: '0 auto 16px', borderTopColor: 'var(--accent)' }} />
-          <p>Loading from database...</p>
-        </div>
-      </div>
-    );
+    return <DatabaseLoader />;
   }
 
   if (bootState.error && isSupabaseConfigured()) {

@@ -2487,9 +2487,30 @@ a:focus-visible {
   color: #111111;
   font-weight: 600;
   margin-top: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.dash-add-mood-btn {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.dash-add-mood-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(232, 71, 43, 0.05);
 }
 
 .dash-mini-mood-input-area {
@@ -4694,7 +4715,41 @@ a:focus-visible {
   border: none;
   font-size: 13px;
   font-weight: 600;
-  padding: 12px 24px;
-  border-radius: 14px;
-  cursor: pointer;
+}
+
+/* ---------- Fullscreen Lottie Loader ---------- */
+.fullscreen-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base, #111111);
+  z-index: 9999;
+  gap: 16px;
+}
+
+.loader-animation-wrap {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader-text {
+  font-family: var(--font-body, 'Poppins', 'Hind Siliguri', sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary, #AAAAAA);
+  letter-spacing: 1px;
+  margin: 0;
+  text-transform: uppercase;
+  animation: pulse-loader-text 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loader-text {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }

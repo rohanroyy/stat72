@@ -155,17 +155,30 @@ export default function ExplorePage() {
   useEffect(() => {
     async function loadMoods() {
       try {
+        const now = Date.now();
+        const twelveHours = 12 * 60 * 60 * 1000;
+
         if (isSupabaseConfigured()) {
           const { data, error } = await supabase
             .from('students')
-            .select('id, name, mood, profile_picture')
+            .select('id, name, mood, profile_picture, mood_selected_at')
             .not('mood', 'is', null);
           if (error) throw error;
-          setStudents(data || []);
+          
+          const activeMoods = (data || []).filter(s => {
+            if (!s.mood_selected_at) return false;
+            return (now - new Date(s.mood_selected_at).getTime()) < twelveHours;
+          });
+          setStudents(activeMoods);
         } else {
           const rawMock = localStorage.getItem('bahattor_mock_students') || '[]';
           const mockStudents = JSON.parse(rawMock);
-          setStudents(mockStudents.filter(s => s.mood));
+          const activeMoods = mockStudents.filter(s => {
+            if (!s.mood) return false;
+            if (!s.mood_selected_at) return false;
+            return (now - new Date(s.mood_selected_at).getTime()) < twelveHours;
+          });
+          setStudents(activeMoods);
         }
       } catch (err) {
         console.error('Failed to load explore page moods:', err);

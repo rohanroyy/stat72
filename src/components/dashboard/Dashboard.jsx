@@ -38,19 +38,41 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   const quote = QUOTES[new Date().getDate() % QUOTES.length];
 
   useEffect(() => {
-    setStudent(initialStudent);
-    setEditForm(initialStudent);
-    if (initialStudent?.profile_picture) {
-      setProfilePic(initialStudent.profile_picture);
+    if (initialStudent) {
+      const selectedAt = initialStudent.mood_selected_at;
+      const isExpired = initialStudent.mood && (
+        !selectedAt || (Date.now() - new Date(selectedAt).getTime() > 12 * 60 * 60 * 1000)
+      );
+
+      if (isExpired) {
+        const clearedFields = { mood: null, mood_selected_at: null };
+        const clearedStudent = { ...initialStudent, ...clearedFields };
+        setStudent(clearedStudent);
+        setEditForm(clearedStudent);
+        
+        persistStudentUpdate(clearedFields, initialStudent.id).catch(err => {
+          console.error('Failed to auto-clear expired mood:', err);
+        });
+        
+        onProfileUpdate(clearedStudent);
+      } else {
+        setStudent(initialStudent);
+        setEditForm(initialStudent);
+      }
+
+      if (initialStudent.profile_picture) {
+        setProfilePic(initialStudent.profile_picture);
+      }
     }
   }, [initialStudent]);
 
-  const persistStudentUpdate = async (updatedFields) => {
+  const persistStudentUpdate = async (updatedFields, targetId = initialStudent?.id) => {
+    if (!targetId) return;
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('students')
         .update(updatedFields)
-        .eq('id', student.id)
+        .eq('id', targetId)
         .select();
 
       if (error) {
@@ -64,17 +86,17 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         );
       }
 
-      const merged = { ...student, ...updatedFields };
+      const merged = { ...initialStudent, ...updatedFields };
       localStorage.setItem('bahattor_logged_in_student', JSON.stringify(merged));
     } else {
       const rawMock = localStorage.getItem('bahattor_mock_students') || '[]';
       const mockStudents = JSON.parse(rawMock);
-      const idx = mockStudents.findIndex(s => s.id === student.id);
+      const idx = mockStudents.findIndex(s => s.id === targetId);
       if (idx !== -1) {
         mockStudents[idx] = { ...mockStudents[idx], ...updatedFields };
         localStorage.setItem('bahattor_mock_students', JSON.stringify(mockStudents));
       }
-      localStorage.setItem('bahattor_logged_in_student', JSON.stringify({ ...student, ...updatedFields }));
+      localStorage.setItem('bahattor_logged_in_student', JSON.stringify({ ...initialStudent, ...updatedFields }));
     }
   };
 
@@ -214,12 +236,36 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   const yearNum   = today.getFullYear();
   const dayName   = today.toLocaleDateString('en-US', { weekday: 'short' });
 
-  // Get ALL exams this month (from today onwards)
-  const todayStr = today.toISOString().split('T')[0];
-  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString().split('T')[0];
+  const getLocalDateStr = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Get ALL exams this month (from today onwards in local time)
+  const todayStr = getLocalDateStr(today);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const nextMonthStartStr = getLocalDateStr(nextMonthStart);
 
   const monthExams = exams
-    .filter(e => e.date >= todayStr && e.date < nextMonthStart)
+    .filter(e => {
+      if (e.date < todayStr) return false;
+      if (e.date === todayStr && e.time) {
+        const currentHours = today.getHours();
+        const currentMinutes = today.getMinutes();
+        const [examHours, examMinutes] = e.time.split(':').map(Number);
+        if (examHours !== undefined) {
+          const examStartMinutes = examHours * 60 + (examMinutes || 0);
+          const currentTotalMinutes = currentHours * 60 + currentMinutes;
+          // Remove if current time is more than 3 hours (180 mins) past the exam start time
+          if (currentTotalMinutes > examStartMinutes + 180) {
+            return false;
+          }
+        }
+      }
+      return e.date < nextMonthStartStr;
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   // First name only for greeting
@@ -397,7 +443,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
           {student.mood && !moodEditing ? (
             <p className="dash-mini-sub dash-mini-mood-text">{student.mood}</p>
-          ) : (
+          ) : moodEditing ? (
             <div className="dash-mini-mood-input-area">
               <input
                 className="mood-text-input"
@@ -405,6 +451,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
                 placeholder="How are you feeling?"
                 maxLength={40}
                 value={moodInput}
+                autoFocus
                 onChange={e => setMoodInput(e.target.value.slice(0, 40))}
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleMoodSave();
@@ -419,6 +466,13 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
                 </div>
               </div>
             </div>
+          ) : (
+            <button
+              className="dash-add-mood-btn"
+              onClick={() => { setMoodInput(''); setMoodEditing(true); }}
+            >
+              + Add mood
+            </button>
           )}
         </div>
 
