@@ -436,7 +436,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             ) : (
               <>
                 <strong>Enable notifications</strong>
-                <p>Get push reminders for upcoming exams/events 3 days before at 10 AM.</p>
+                <p>Get reminders for upcoming exams.</p>
               </>
             )}
           </div>
