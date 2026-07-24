@@ -5090,7 +5090,7 @@ a:focus-visible {
 }
 
 .glimpse-modal-card {
-  background: var(--bg-surface, #ffffff);
+  background: #111111;
   border-radius: 20px;
   width: 100%;
   max-width: 440px;
@@ -5098,8 +5098,9 @@ a:focus-visible {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-hairline, #e2e8f0);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 .glimpse-modal-header {
@@ -5107,23 +5108,26 @@ a:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid var(--border-hairline, #e2e8f0);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .glimpse-modal-back-btn {
   background: none;
   border: none;
-  color: var(--accent);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .glimpse-modal-title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-main, #0f172a);
+  color: #ffffff !important;
 }
 
 .glimpse-manager-body,
@@ -5146,13 +5150,13 @@ a:focus-visible {
 }
 
 .glimpse-empty-box.dashed {
-  border: 1.5px dashed #cbd5e1;
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
   border-radius: 16px;
 }
 
 .empty-title {
   font-weight: 600;
-  color: #475569;
+  color: #e2e8f0;
   margin: 0;
 }
 
@@ -6156,7 +6160,7 @@ a:focus-visible {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 24px 16px;
+  padding: 12px 10px;
   width: 100%;
   background: #fbfbfb;
   border: 1px dashed #cccccc;
@@ -6187,8 +6191,8 @@ a:focus-visible {
 }
 
 .glimpse-cat-animation-box {
-  width: 110px;
-  height: 110px;
+  width: 180px;
+  height: 180px;
   margin: 0 auto;
 }
 

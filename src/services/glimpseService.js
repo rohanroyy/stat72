@@ -419,18 +419,25 @@ export async function burnGlimpseView(glimpseId, viewerId) {
 
   const burnLocally = () => {
     const views = readLocalViews();
-    if (views.some(v => (v.glimpse_id === glimpseId || v.glimpseId === glimpseId) && (v.viewer_id === viewerId || v.viewerId === viewerId))) {
-      return;
-    }
-    views.push({ id: viewId, glimpse_id: glimpseId, viewer_id: viewerId, viewed_at: nowStr, reaction: null });
-    writeLocalViews(views);
+    let view = views.find(v => (v.glimpse_id === glimpseId || v.glimpseId === glimpseId) && (v.viewer_id === viewerId || v.viewerId === viewerId));
 
-    const glimpses = readLocalGlimpses();
-    const g = glimpses.find(item => item.id === glimpseId);
-    if (g) {
-      g.view_count = (g.view_count || g.viewCount || 0) + 1;
-      g.viewCount = g.view_count;
-      writeLocalGlimpses(glimpses);
+    if (!view) {
+      views.push({ id: viewId, glimpse_id: glimpseId, viewer_id: viewerId, viewed_at: nowStr, reaction: 'burned' });
+      writeLocalViews(views);
+
+      const glimpses = readLocalGlimpses();
+      const g = glimpses.find(item => item.id === glimpseId);
+      if (g) {
+        g.view_count = (g.view_count || g.viewCount || 0) + 1;
+        g.viewCount = g.view_count;
+        writeLocalGlimpses(glimpses);
+      }
+    } else {
+      const prevReaction = view.reaction || '';
+      if (prevReaction !== 'burned' && !prevReaction.endsWith('_burned')) {
+        view.reaction = prevReaction ? `${prevReaction}_burned` : 'burned';
+        writeLocalViews(views);
+      }
     }
     notifyLocalChange();
   };
@@ -442,29 +449,31 @@ export async function burnGlimpseView(glimpseId, viewerId) {
   try {
     const { data: existing } = await supabase
       .from('glimpse_views')
-      .select('id')
+      .select('*')
       .eq('glimpse_id', glimpseId)
       .eq('viewer_id', viewerId)
       .maybeSingle();
 
-    if (existing) return;
+    if (!existing) {
+      await supabase.from('glimpse_views').insert([{
+        id: viewId,
+        glimpse_id: glimpseId,
+        viewer_id: viewerId,
+        viewed_at: nowStr,
+        reaction: 'burned'
+      }]);
 
-    const { error: viewErr } = await supabase.from('glimpse_views').insert([{
-      id: viewId,
-      glimpse_id: glimpseId,
-      viewer_id: viewerId,
-      viewed_at: nowStr,
-      reaction: null
-    }]);
-
-    if (viewErr) {
-      if (isTableMissingError(viewErr)) return burnLocally();
-    }
-
-    const { data: gData } = await supabase.from('glimpses').select('view_count').eq('id', glimpseId).maybeSingle();
-    if (gData) {
-      const newCount = (gData.view_count || 0) + 1;
-      await supabase.from('glimpses').update({ view_count: newCount }).eq('id', glimpseId);
+      const { data: gData } = await supabase.from('glimpses').select('view_count').eq('id', glimpseId).maybeSingle();
+      if (gData) {
+        const newCount = (gData.view_count || 0) + 1;
+        await supabase.from('glimpses').update({ view_count: newCount }).eq('id', glimpseId);
+      }
+    } else {
+      const prevReaction = existing.reaction || '';
+      if (prevReaction !== 'burned' && !prevReaction.endsWith('_burned')) {
+        const nextReactionStored = prevReaction ? `${prevReaction}_burned` : 'burned';
+        await supabase.from('glimpse_views').update({ reaction: nextReactionStored }).eq('id', existing.id);
+      }
     }
 
     notifyLocalChange();
@@ -488,14 +497,31 @@ export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
   const reactLocally = () => {
     const views = readLocalViews();
     let view = views.find(v => (v.glimpse_id === glimpseId || v.glimpseId === glimpseId) && (v.viewer_id === viewerId || v.viewerId === viewerId));
-    let prevReaction = view ? view.reaction : null;
+    let prevReactionRaw = view ? view.reaction : null;
+    let prevReaction = prevReactionRaw ? prevReactionRaw.replace('_burned', '') : null;
+    let isAlreadyBurned = prevReactionRaw ? (prevReactionRaw === 'burned' || prevReactionRaw.endsWith('_burned')) : false;
+
     let nextReaction = prevReaction === reactionType ? null : reactionType;
+    let nextReactionStored = nextReaction;
+    if (nextReaction && isAlreadyBurned) {
+      nextReactionStored = `${nextReaction}_burned`;
+    } else if (!nextReaction && isAlreadyBurned) {
+      nextReactionStored = 'burned';
+    }
 
     if (!view) {
-      view = { id: viewId, glimpse_id: glimpseId, viewer_id: viewerId, viewed_at: nowStr, reaction: nextReaction };
+      view = { id: viewId, glimpse_id: glimpseId, viewer_id: viewerId, viewed_at: nowStr, reaction: nextReactionStored };
       views.push(view);
+
+      const glimpses = readLocalGlimpses();
+      const g = glimpses.find(item => item.id === glimpseId);
+      if (g) {
+        g.view_count = (g.view_count || g.viewCount || 0) + 1;
+        g.viewCount = g.view_count;
+        writeLocalGlimpses(glimpses);
+      }
     } else {
-      view.reaction = nextReaction;
+      view.reaction = nextReactionStored;
     }
     writeLocalViews(views);
 
@@ -525,8 +551,17 @@ export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
       .eq('viewer_id', viewerId)
       .maybeSingle();
 
-    let prevReaction = existingView ? existingView.reaction : null;
+    let prevReactionRaw = existingView ? existingView.reaction : null;
+    let prevReaction = prevReactionRaw ? prevReactionRaw.replace('_burned', '') : null;
+    let isAlreadyBurned = prevReactionRaw ? (prevReactionRaw === 'burned' || prevReactionRaw.endsWith('_burned')) : false;
+
     let nextReaction = prevReaction === reactionType ? null : reactionType;
+    let nextReactionStored = nextReaction;
+    if (nextReaction && isAlreadyBurned) {
+      nextReactionStored = `${nextReaction}_burned`;
+    } else if (!nextReaction && isAlreadyBurned) {
+      nextReactionStored = 'burned';
+    }
 
     if (!existingView) {
       await supabase.from('glimpse_views').insert([{
@@ -534,10 +569,16 @@ export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
         glimpse_id: glimpseId,
         viewer_id: viewerId,
         viewed_at: nowStr,
-        reaction: nextReaction
+        reaction: nextReactionStored
       }]);
+
+      const { data: gData } = await supabase.from('glimpses').select('view_count').eq('id', glimpseId).maybeSingle();
+      if (gData) {
+        const newCount = (gData.view_count || 0) + 1;
+        await supabase.from('glimpses').update({ view_count: newCount }).eq('id', glimpseId);
+      }
     } else {
-      await supabase.from('glimpse_views').update({ reaction: nextReaction }).eq('id', existingView.id);
+      await supabase.from('glimpse_views').update({ reaction: nextReactionStored }).eq('id', existingView.id);
     }
 
     const { data: glimpseData } = await supabase.from('glimpses').select('reaction_counts').eq('id', glimpseId).maybeSingle();
@@ -654,7 +695,10 @@ export async function getAllUnburnedGlimpses(viewerId) {
     const views = readLocalViews();
     views.forEach(v => {
       if ((v.viewer_id === viewerId || v.viewerId === viewerId)) {
-        burnedViewIds.add(v.glimpse_id || v.glimpseId);
+        const r = v.reaction || '';
+        if (r === 'burned' || r.endsWith('_burned')) {
+          burnedViewIds.add(v.glimpse_id || v.glimpseId);
+        }
       }
     });
 
@@ -687,10 +731,15 @@ export async function getAllUnburnedGlimpses(viewerId) {
       if (viewerId) {
         const { data: viewsData } = await supabase
           .from('glimpse_views')
-          .select('glimpse_id')
+          .select('glimpse_id, reaction')
           .eq('viewer_id', viewerId);
 
-        (viewsData || []).forEach(v => burnedViewIds.add(v.glimpse_id));
+        (viewsData || []).forEach(v => {
+          const r = v.reaction || '';
+          if (r === 'burned' || r.endsWith('_burned')) {
+            burnedViewIds.add(v.glimpse_id);
+          }
+        });
       }
 
       const uploaderIds = Array.from(new Set(activeGlimpses.map(g => g.uploader_id || g.uploaderId)));

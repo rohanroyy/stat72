@@ -198,7 +198,7 @@ export default function GlimpseViewerTray({ currentStudent }) {
           </span>
         )}
       </div>
-      <div className="section-label-line" style={{ marginBottom: '18px' }} />
+      <div className="section-label-line" style={{ marginBottom: '6px' }} />
 
       <div className="explore-glimpse-stack-wrapper">
         {isLoading ? (
@@ -240,7 +240,7 @@ export default function GlimpseViewerTray({ currentStudent }) {
               {/* Caption Overlay */}
               {currentGlimpse.caption && (
                 <div className="front-card-caption-overlay bangla-caption-styled">
-                  💬 {currentGlimpse.caption}
+                  {currentGlimpse.caption}
                 </div>
               )}
 

@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
-import { createGlimpse, getGlimpsesForUploader, deleteGlimpse } from '../../services/glimpseService';
+import React, { useState, useEffect, useRef } from 'react';
+import { createGlimpse, getGlimpsesForUploader, deleteGlimpse, subscribeToGlimpses } from '../../services/glimpseService';
 
 export default function GlimpseUploaderCard({ student }) {
   // Modal toggles
@@ -25,6 +25,15 @@ export default function GlimpseUploaderCard({ student }) {
   const [isLoadingGlimpses, setIsLoadingGlimpses] = useState(false);
 
   const videoRef = useRef(null);
+
+  // Callback ref to bind stream & play video instantly upon DOM mount
+  const videoRefCallback = (el) => {
+    videoRef.current = el;
+    if (el && cameraStream && el.srcObject !== cameraStream) {
+      el.srcObject = cameraStream;
+      el.play().catch(err => console.warn('Auto play video failed:', err));
+    }
+  };
 
   // Stop camera tracks helper
   const stopCamera = () => {
@@ -58,8 +67,10 @@ export default function GlimpseUploaderCard({ student }) {
       setCameraStream(stream);
       setIsCameraActive(true);
 
+      // Trigger immediate play if ref is already bound
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(e => console.warn('Immediate video play failed:', e));
       }
     } catch (err) {
       console.error('Camera stream access failed:', err);
@@ -84,7 +95,7 @@ export default function GlimpseUploaderCard({ student }) {
     }
   };
 
-  // Manage camera lifetime
+  // Manage camera stream lifecycle
   useEffect(() => {
     if (showCameraModal && !capturedImage) {
       startCamera(cameraFacing);
@@ -96,26 +107,93 @@ export default function GlimpseUploaderCard({ student }) {
     };
   }, [showCameraModal, capturedImage]);
 
-  // Browser/device back gesture listener for full-page camera view
+  // Synchronize stream updates to the mounted video tag
   useEffect(() => {
-    if (!showCameraModal) return;
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(e => console.warn('Video sync play failed:', e));
+    }
+  }, [cameraStream]);
 
-    // Seed state so back gesture pops modal cleanly
+  // Navigation: back/gesture wrappers
+  const handleOpenCameraModal = () => {
+    setShowCameraModal(true);
     window.history.pushState({ modal: 'glimpseCamera' }, '');
+  };
 
-    const handlePopState = () => {
+  const handleCloseCameraModal = () => {
+    if (window.history.state?.modal === 'glimpseCamera') {
+      window.history.back();
+    } else {
       stopCamera();
       setCapturedImage(null);
       setCaption('');
       setShowCaptionInput(false);
       setShowCameraModal(false);
+    }
+  };
+
+  const handleOpenGallery = () => {
+    setShowManagerModal(true);
+    window.history.pushState({ modal: 'glimpseGallery' }, '');
+  };
+
+  const handleSelectGlimpseForDetail = (g) => {
+    setSelectedGlimpse(g);
+    window.history.pushState({ modal: 'glimpseDetail' }, '');
+  };
+
+  const handleGalleryBack = () => {
+    if (window.history.state?.modal === 'glimpseDetail') {
+      window.history.back();
+    } else if (window.history.state?.modal === 'glimpseGallery') {
+      window.history.back();
+    } else {
+      if (selectedGlimpse) setSelectedGlimpse(null);
+      else setShowManagerModal(false);
+    }
+  };
+
+  const handleBackdropClose = () => {
+    if (window.history.state?.modal === 'glimpseDetail') {
+      window.history.go(-2);
+    } else if (window.history.state?.modal === 'glimpseGallery') {
+      window.history.back();
+    } else {
+      setShowManagerModal(false);
+    }
+  };
+
+  // Unified popstate listener for back gesture navigation
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const state = e.state;
+
+      // Close Camera Modal
+      if (showCameraModal && (!state || state.modal !== 'glimpseCamera')) {
+        stopCamera();
+        setCapturedImage(null);
+        setCaption('');
+        setShowCaptionInput(false);
+        setShowCameraModal(false);
+      }
+
+      // Close Detail Modal (go back to Grid)
+      if (selectedGlimpse && (!state || state.modal !== 'glimpseDetail')) {
+        setSelectedGlimpse(null);
+      }
+
+      // Close Gallery Modal entirely
+      if (showManagerModal && (!state || (state.modal !== 'glimpseGallery' && state.modal !== 'glimpseDetail'))) {
+        setShowManagerModal(false);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [showCameraModal]);
+  }, [showCameraModal, showManagerModal, selectedGlimpse, cameraStream]);
 
   // Load uploader glimpses list
   const loadMyGlimpses = async () => {
@@ -133,13 +211,11 @@ export default function GlimpseUploaderCard({ student }) {
 
   useEffect(() => {
     loadMyGlimpses();
-  }, [student?.id]);
-
-  useEffect(() => {
-    if (showManagerModal) {
+    const unsub = subscribeToGlimpses(() => {
       loadMyGlimpses();
-    }
-  }, [showManagerModal]);
+    });
+    return () => unsub();
+  }, [student?.id]);
 
   // Capture snapshot from live camera feed
   const handleCaptureSnapshot = () => {
@@ -185,7 +261,6 @@ export default function GlimpseUploaderCard({ student }) {
     setIsUploading(true);
 
     try {
-      // Auto-uppercase English text, preserve Bangla as entered
       const formattedCaption = caption ? caption.trim().toUpperCase() : null;
       await createGlimpse(student.id, capturedImage, formattedCaption);
       setCapturedImage(null);
@@ -193,10 +268,8 @@ export default function GlimpseUploaderCard({ student }) {
       setShowCaptionInput(false);
       setShowCameraModal(false);
       await loadMyGlimpses();
-      alert('✨ Glimpse shared successfully! It will be visible for 12 hours.');
     } catch (err) {
       console.error('Failed to upload glimpse:', err);
-      alert(`Failed to share Glimpse: ${err.message || 'Please check your connection and try again.'}`);
     } finally {
       setIsUploading(false);
     }
@@ -204,7 +277,6 @@ export default function GlimpseUploaderCard({ student }) {
 
   const handleDelete = async (glimpseId) => {
     if (!student?.id || !glimpseId) return;
-    if (!window.confirm('Delete this Glimpse permanently?')) return;
 
     try {
       await deleteGlimpse(glimpseId, student.id);
@@ -212,19 +284,6 @@ export default function GlimpseUploaderCard({ student }) {
       await loadMyGlimpses();
     } catch (err) {
       console.error('Failed to delete glimpse:', err);
-      alert('Failed to delete Glimpse.');
-    }
-  };
-
-  const handleCloseCameraModal = () => {
-    if (window.history.state?.modal === 'glimpseCamera') {
-      window.history.back();
-    } else {
-      stopCamera();
-      setCapturedImage(null);
-      setCaption('');
-      setShowCaptionInput(false);
-      setShowCameraModal(false);
     }
   };
 
@@ -234,7 +293,7 @@ export default function GlimpseUploaderCard({ student }) {
       <div className="dash-add-glimpse-row">
         <button
           className="dash-add-glimpse-black-pill"
-          onClick={() => setShowCameraModal(true)}
+          onClick={handleOpenCameraModal}
         >
           <img
             src="/glimpse logoAsset 1.png"
@@ -268,7 +327,7 @@ export default function GlimpseUploaderCard({ student }) {
               <div className="glimpse-viewfinder-frame camera-fullpage-frame">
                 {isCameraActive ? (
                   <video
-                    ref={videoRef}
+                    ref={videoRefCallback}
                     autoPlay
                     playsInline
                     muted
@@ -319,7 +378,7 @@ export default function GlimpseUploaderCard({ student }) {
                       className="glimpse-caption-pill-btn"
                       onClick={() => setShowCaptionInput(true)}
                     >
-                      {caption ? `💬 "${caption}"` : '💬 Add caption'}
+                      {caption ? `"${caption}"` : '💬 Add caption'}
                     </button>
                   ) : (
                     <div className="glimpse-caption-input-overlay">
@@ -390,7 +449,7 @@ export default function GlimpseUploaderCard({ student }) {
                 {/* Gallery Asset Icon on Right */}
                 <button
                   className="glimpse-gallery-icon-btn"
-                  onClick={() => setShowManagerModal(true)}
+                  onClick={handleOpenGallery}
                   title="My Uploaded Glimpses"
                 >
                   <img src="/galleryAsset 3.png" alt="Gallery" className="gallery-asset-img" />
@@ -403,15 +462,12 @@ export default function GlimpseUploaderCard({ student }) {
 
       {/* ── MY GLIMPSES GALLERY MODAL ────────────────────────────────────── */}
       {showManagerModal && (
-        <div className="glimpse-modal-backdrop" onClick={() => setShowManagerModal(false)}>
+        <div className="glimpse-modal-backdrop" onClick={handleBackdropClose}>
           <div className="glimpse-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="glimpse-modal-header">
               <button
                 className="glimpse-modal-back-btn"
-                onClick={() => {
-                  if (selectedGlimpse) setSelectedGlimpse(null);
-                  else setShowManagerModal(false);
-                }}
+                onClick={handleGalleryBack}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12" />
@@ -443,7 +499,7 @@ export default function GlimpseUploaderCard({ student }) {
                       <div
                         key={g.id}
                         className="glimpse-thumb-card"
-                        onClick={() => setSelectedGlimpse(g)}
+                        onClick={() => handleSelectGlimpseForDetail(g)}
                       >
                         <img src={g.imageUrl} alt="Glimpse thumbnail" className="thumb-img" />
                         <div className="thumb-views-badge">
@@ -469,7 +525,7 @@ export default function GlimpseUploaderCard({ student }) {
 
                   {selectedGlimpse.caption && (
                     <div className="detail-caption-overlay bangla-caption-styled">
-                      💬 {selectedGlimpse.caption}
+                      {selectedGlimpse.caption}
                     </div>
                   )}
                 </div>
