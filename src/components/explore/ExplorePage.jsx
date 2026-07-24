@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import ImposterGame from './ImposterGame';
+import GlimpseViewerTray from '../glimpse/GlimpseViewerTray';
 
 /**
  * FloatingMoodBubble — two-layer architecture:
@@ -146,11 +147,22 @@ function FloatingMoodBubble({ student, style, initials }) {
   );
 }
 
-export default function ExplorePage() {
+export default function ExplorePage({ currentUser: propUser }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bubbleStyles, setBubbleStyles] = useState([]);
   const [showImposterGame, setShowImposterGame] = useState(false);
+
+  const [currentStudent, setCurrentStudent] = useState(propUser || null);
+
+  useEffect(() => {
+    if (!currentStudent) {
+      try {
+        const stored = localStorage.getItem('bahattor_logged_in_student');
+        if (stored) setCurrentStudent(JSON.parse(stored));
+      } catch (_) {}
+    }
+  }, [currentStudent]);
 
   useEffect(() => {
     async function loadMoods() {
@@ -275,6 +287,9 @@ export default function ExplorePage() {
           )}
         </div>
       </div>
+
+      {/* Section 1.5: Glimpse Photo Viewing Option Tray */}
+      <GlimpseViewerTray currentStudent={currentStudent} />
 
       {/* Section 2: Guess the Imposter Mini Game */}
       <div className="explore-section">

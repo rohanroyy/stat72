@@ -305,7 +305,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
     if (newNotifs.length > 0) {
       newNotifs.forEach(notif => {
-        if (notif.target === 'all' || notif.target === currentStudentId) {
+        const isTargeted = notif.target === 'all' ||
+                           (Array.isArray(notif.target) && notif.target.includes(currentStudentId)) ||
+                           (notif.target === currentStudentId);
+        if (isTargeted) {
           if (Notification.permission === 'granted') {
             const options = {
               body: notif.body,
@@ -772,7 +775,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     }
 
     if (activeTab === 'explore') {
-      return <ExplorePage />;
+      return <ExplorePage currentUser={currentUser} />;
     }
 
     if (activeTab === 'announcement') {

@@ -1,4 +1,4 @@
-﻿import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { fetchSetting, saveSetting } from "./settingsService";
 
 const LOCAL_STORAGE_KEY = "bahattor_mock_broadcasts";
@@ -58,4 +58,18 @@ export async function sendBroadcastNotification(title, body, target = "all") {
   const pruned = currentList.slice(0, 20);
   await saveSetting("broadcast_notifications", pruned);
   return pruned;
+}
+
+export async function deleteBroadcastNotification(id) {
+  if (!isSupabaseConfigured()) {
+    const list = await fetchBroadcastNotifications();
+    const filtered = list.filter(n => n.id !== id);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+    window.dispatchEvent(new Event("storage"));
+    return filtered;
+  }
+  const currentList = await fetchBroadcastNotifications();
+  const filtered = currentList.filter(n => n.id !== id);
+  await saveSetting("broadcast_notifications", filtered);
+  return filtered;
 }

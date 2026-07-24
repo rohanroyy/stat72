@@ -8,7 +8,7 @@ import {
   applyCustomNamesToFolders,
 } from '../../services/telegramService';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
-import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification } from '../../services/broadcastService';
+import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification, deleteBroadcastNotification } from '../../services/broadcastService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -58,7 +58,9 @@ export default function AdminPage({
   const [broadcasts, setBroadcasts] = useState([]);
   const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
-  const [notifTarget, setNotifTarget] = useState('all');
+  const [notifTargetType, setNotifTargetType] = useState('all'); // 'all' | 'custom'
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [notifSendStatus, setNotifSendStatus] = useState('');
 
   useEffect(() => {
@@ -66,16 +68,33 @@ export default function AdminPage({
     fetchBroadcastNotifications().then(setBroadcasts).catch(err => console.error('Failed to load broadcasts:', err));
   }, []);
 
+  const filteredStudents = students.filter(s => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (s.name || '').toLowerCase().includes(q) ||
+           (s.class_roll || '').toLowerCase().includes(q) ||
+           (s.registration_number || '').toLowerCase().includes(q);
+  });
+
+  const handleToggleStudentSelect = (id) => {
+    setSelectedStudentIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSendNotification = async (e) => {
     e.preventDefault();
     if (!notifTitle.trim() || !notifBody.trim()) return;
+    if (notifTargetType === 'custom' && selectedStudentIds.length === 0) return;
 
     setNotifSendStatus('Sending...');
     try {
-      const updated = await sendBroadcastNotification(notifTitle, notifBody, notifTarget);
+      const finalTarget = notifTargetType === 'all' ? 'all' : selectedStudentIds;
+      const updated = await sendBroadcastNotification(notifTitle, notifBody, finalTarget);
       setBroadcasts(updated);
       setNotifTitle('');
       setNotifBody('');
+      setSelectedStudentIds([]);
       setNotifSendStatus('Success: Notification published!');
       
       setTimeout(() => setNotifSendStatus(''), 4000);
@@ -83,6 +102,27 @@ export default function AdminPage({
       console.error(err);
       setNotifSendStatus(`Error: ${err.message || 'Failed to send'}`);
     }
+  };
+
+  const handleDeleteNotification = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this notification permanently from the database?')) {
+      return;
+    }
+    try {
+      const updated = await deleteBroadcastNotification(id);
+      setBroadcasts(updated);
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to delete notification: ${err.message || 'unknown error'}`);
+    }
+  };
+
+  const getTargetTooltip = (target) => {
+    if (target === 'all') return 'Broadcast to all registered devices';
+    if (Array.isArray(target)) {
+      return target.map(tid => students.find(s => s.id === tid)?.name || 'Unknown student').join(', ');
+    }
+    return students.find(s => s.id === target)?.name || 'Selected user';
   };
 
 
@@ -433,25 +473,110 @@ export default function AdminPage({
         
         <form onSubmit={handleSendNotification}>
           <div className="admin-form-grid" style={{ gap: '16px' }}>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="notif-target">Target Recipients</label>
-              <select
-                id="notif-target"
-                className="admin-input"
-                value={notifTarget}
-                onChange={(e) => setNotifTarget(e.target.value)}
-                style={{ width: '100%', height: '42px', padding: '0 12px', background: 'var(--bg-surface-2)', border: '1px solid var(--border-hairline)', color: 'var(--text-main)', borderRadius: 'var(--radius-sm)' }}
-              >
-                <option value="all">All Users (Broadcast)</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} (Roll: {s.class_roll} • Reg: {s.registration_number})
-                  </option>
-                ))}
-              </select>
+            <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="admin-label">Recipients</label>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                  <input
+                    type="radio"
+                    name="notifTargetType"
+                    value="all"
+                    checked={notifTargetType === 'all'}
+                    onChange={() => { setNotifTargetType('all'); setSelectedStudentIds([]); }}
+                  />
+                  All Users (Broadcast)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                  <input
+                    type="radio"
+                    name="notifTargetType"
+                    value="custom"
+                    checked={notifTargetType === 'custom'}
+                    onChange={() => setNotifTargetType('custom')}
+                  />
+                  Select Multiple Users
+                </label>
+              </div>
+
+              {notifTargetType === 'custom' && (
+                <div style={{
+                  background: 'var(--bg-surface-2)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px',
+                  maxHeight: '240px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginTop: '4px'
+                }}>
+                  <input
+                    type="text"
+                    className="admin-input"
+                    placeholder="Search students by name, roll, or registration..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ marginBottom: '4px', height: '36px', fontSize: '12.5px' }}
+                  />
+                  
+                  <div style={{ overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '4px' }}>
+                    {filteredStudents.length === 0 ? (
+                      <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px' }}>
+                        No matching students found
+                      </div>
+                    ) : (
+                      filteredStudents.map(student => {
+                        const isChecked = selectedStudentIds.includes(student.id);
+                        return (
+                          <label
+                            key={student.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '12.5px',
+                              cursor: 'pointer',
+                              color: isChecked ? 'var(--accent)' : 'var(--text-main)',
+                              background: isChecked ? 'rgba(232, 71, 43, 0.04)' : 'transparent',
+                              padding: '4px 6px',
+                              borderRadius: '4px',
+                              transition: 'background 100ms ease'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleStudentSelect(student.id)}
+                            />
+                            <span style={{ fontWeight: isChecked ? '600' : 'normal' }}>
+                              {student.name}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                              (Roll: {student.class_roll} • Reg: {student.registration_number})
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-hairline)', paddingTop: '8px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                    <span>Selected: {selectedStudentIds.length} student(s)</span>
+                    {selectedStudentIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentIds([])}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             
-            <div className="admin-form-group">
+            <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
               <label className="admin-label" htmlFor="notif-title">Notification Title *</label>
               <input
                 id="notif-title"
@@ -491,7 +616,7 @@ export default function AdminPage({
             <button
               type="submit"
               className="admin-btn"
-              disabled={!notifTitle.trim() || !notifBody.trim()}
+              disabled={!notifTitle.trim() || !notifBody.trim() || (notifTargetType === 'custom' && selectedStudentIds.length === 0)}
             >
               Send Notification
             </button>
@@ -518,23 +643,29 @@ export default function AdminPage({
                 const targetStudent = students.find(s => s.id === b.target);
                 const targetLabel = b.target === 'all' 
                   ? 'All Users' 
-                  : targetStudent 
-                    ? `${targetStudent.name} (Roll: ${targetStudent.class_roll})`
-                    : 'Selected User';
+                  : Array.isArray(b.target)
+                    ? `${b.target.length} Selected Users`
+                    : targetStudent 
+                      ? `${targetStudent.name} (Roll: ${targetStudent.class_roll})`
+                      : 'Selected User';
 
                 return (
                   <div key={b.id} className="admin-folder-row-item" style={{ alignItems: 'flex-start' }}>
                     <div className="admin-folder-info" style={{ gap: '2px' }}>
                       <div className="admin-folder-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>{b.title}</span>
-                        <span style={{
-                          fontSize: '10px',
-                          background: b.target === 'all' ? 'rgba(232, 71, 43, 0.1)' : 'rgba(82,0,224,0.1)',
-                          color: b.target === 'all' ? 'var(--accent)' : 'var(--navy-400)',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontWeight: '600'
-                        }}>
+                        <span 
+                          style={{
+                            fontSize: '10px',
+                            background: b.target === 'all' ? 'rgba(232, 71, 43, 0.1)' : 'rgba(82,0,224,0.1)',
+                            color: b.target === 'all' ? 'var(--accent)' : 'var(--navy-400)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: '600',
+                            cursor: 'help'
+                          }}
+                          title={getTargetTooltip(b.target)}
+                        >
                           {targetLabel}
                         </span>
                       </div>
@@ -542,6 +673,19 @@ export default function AdminPage({
                       <div className="admin-folder-link" style={{ fontSize: '11px', marginTop: '4px' }}>
                         Sent at: {new Date(b.created_at).toLocaleString()}
                       </div>
+                    </div>
+                    <div className="admin-actions" style={{ alignSelf: 'center' }}>
+                      <button
+                        className="admin-icon-btn delete"
+                        onClick={() => handleDeleteNotification(b.id)}
+                        aria-label="Delete notification permanently"
+                        title="Delete permanently"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );

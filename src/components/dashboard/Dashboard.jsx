@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import GlimpseUploaderCard from '../glimpse/GlimpseUploaderCard';
 
 // Motivational quotes shown in header
 const QUOTES = [
@@ -67,11 +68,11 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
         const clearedStudent = { ...initialStudent, ...clearedFields };
         setStudent(clearedStudent);
         setEditForm(clearedStudent);
-        
+
         persistStudentUpdate(clearedFields, initialStudent.id).catch(err => {
           console.error('Failed to auto-clear expired mood:', err);
         });
-        
+
         onProfileUpdate(clearedStudent);
       } else {
         setStudent(initialStudent);
@@ -249,10 +250,10 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
   // Date helpers
   const today = new Date();
-  const dateNum  = today.getDate();
+  const dateNum = today.getDate();
   const monthName = today.toLocaleDateString('en-US', { month: 'short' });
-  const yearNum   = today.getFullYear();
-  const dayName   = today.toLocaleDateString('en-US', { weekday: 'short' });
+  const yearNum = today.getFullYear();
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'short' });
 
   const getLocalDateStr = (d) => {
     const year = d.getFullYear();
@@ -305,7 +306,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
   // Intelligently parse exam subject into course code (e.g. STAT H-305) & course title
   const parseExamSubject = (exam) => {
     const full = (exam.subject || '').trim();
-    
+
     if (full.includes(':')) {
       const parts = full.split(':');
       return {
@@ -436,7 +437,7 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             ) : (
               <>
                 <strong>Enable notifications</strong>
-                <p>Get push reminders for upcoming exams/events 3 days before at 10 AM.</p>
+                <p>Get reminders for upcoming exams.</p>
               </>
             )}
           </div>
@@ -521,6 +522,9 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
       </div>
 
+      {/* ── Glimpse Uploader Option Card ────────────────────────────── */}
+      <GlimpseUploaderCard student={student} />
+
       {/* ── Upcoming Exams this month ────────────────────────────── */}
       <div className="dash-section">
         <div className="dash-section-header">
@@ -540,8 +544,8 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
             {monthExams.map((exam, idx) => {
               const daysLeft = getDaysLeft(exam.date);
               const isUrgent = daysLeft <= 3;
-              const isToday  = daysLeft === 0;
-              const parsed   = parseExamSubject(exam);
+              const isToday = daysLeft === 0;
+              const parsed = parseExamSubject(exam);
 
               return (
                 <div key={exam.id || idx} className={`dash-exam-card ${isUrgent ? 'dash-exam-card-urgent' : ''}`}>

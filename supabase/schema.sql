@@ -111,3 +111,50 @@ CREATE POLICY "students_update_own" ON students FOR UPDATE USING (auth.uid() = i
 -- Run this if you already created the students table before this update:
 ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_picture TEXT DEFAULT NULL;
 
+-- ── Glimpse (Ephemeral Photo Sharing) ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS glimpses (
+  id TEXT PRIMARY KEY,
+  uploader_id TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  caption TEXT DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  view_count INTEGER DEFAULT 0,
+  reaction_counts JSONB DEFAULT '{"love":0,"happy":0,"sad":0,"angry":0}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS glimpses_created_idx ON glimpses (created_at);
+CREATE INDEX IF NOT EXISTS glimpses_uploader_idx ON glimpses (uploader_id);
+
+CREATE TABLE IF NOT EXISTS glimpse_views (
+  id TEXT PRIMARY KEY,
+  glimpse_id TEXT NOT NULL,
+  viewer_id TEXT NOT NULL,
+  viewed_at TIMESTAMPTZ DEFAULT NOW(),
+  reaction TEXT DEFAULT NULL,
+  UNIQUE(glimpse_id, viewer_id)
+);
+
+CREATE INDEX IF NOT EXISTS glimpse_views_lookup_idx ON glimpse_views (glimpse_id, viewer_id);
+
+ALTER TABLE glimpses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE glimpse_views ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "glimpses_select" ON glimpses;
+DROP POLICY IF EXISTS "glimpses_insert" ON glimpses;
+DROP POLICY IF EXISTS "glimpses_update" ON glimpses;
+DROP POLICY IF EXISTS "glimpses_delete" ON glimpses;
+
+CREATE POLICY "glimpses_select" ON glimpses FOR SELECT USING (true);
+CREATE POLICY "glimpses_insert" ON glimpses FOR INSERT WITH CHECK (true);
+CREATE POLICY "glimpses_update" ON glimpses FOR UPDATE USING (true);
+CREATE POLICY "glimpses_delete" ON glimpses FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "glimpse_views_select" ON glimpse_views;
+DROP POLICY IF EXISTS "glimpse_views_insert" ON glimpse_views;
+DROP POLICY IF EXISTS "glimpse_views_update" ON glimpse_views;
+DROP POLICY IF EXISTS "glimpse_views_delete" ON glimpse_views;
+
+CREATE POLICY "glimpse_views_select" ON glimpse_views FOR SELECT USING (true);
+CREATE POLICY "glimpse_views_insert" ON glimpse_views FOR INSERT WITH CHECK (true);
+CREATE POLICY "glimpse_views_update" ON glimpse_views FOR UPDATE USING (true);
+CREATE POLICY "glimpse_views_delete" ON glimpse_views FOR DELETE USING (true);

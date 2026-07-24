@@ -4808,3 +4808,1395 @@ a:focus-visible {
 .dash-notif-banner-btn:hover {
   opacity: 0.9;
 }
+
+/* ==========================================================================
+   GLIMPSE — Ephemeral Photo Sharing (Uploader Card, Tray & 3D Fanned Stack)
+   ========================================================================== */
+
+.glimpse-badge-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft, rgba(232, 71, 43, 0.08));
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 71, 43, 0.2);
+}
+
+.glimpse-card-container {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-hairline, #e2e8f0);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+/* ── 1:1 Viewfinder Camera Frame ───────────────────────────────────────── */
+.glimpse-viewfinder-frame,
+.glimpse-captured-frame {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewfinder-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 20px;
+  text-align: center;
+}
+
+.aperture-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+  opacity: 0.85;
+  transition: transform 200ms ease;
+}
+
+.viewfinder-inner:hover .aperture-icon {
+  transform: scale(1.1);
+}
+
+.viewfinder-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Folder icon in bottom-right corner of viewfinder frame */
+.glimpse-frame-folder-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.glimpse-frame-folder-btn:hover {
+  background: rgba(15, 23, 42, 0.9);
+  transform: scale(1.05);
+}
+
+/* Circular Shutter Button */
+.glimpse-shutter-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+.glimpse-shutter-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.glimpse-shutter-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.shutter-inner-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+}
+
+/* ── Captured / Preview State ──────────────────────────────────────────── */
+.preview-image-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.captured-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Translucent Caption Pill top-left */
+.glimpse-caption-pill-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  z-index: 6;
+  max-width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glimpse-caption-input-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 8px 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.caption-input-field {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+.caption-counter {
+  font-size: 10px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.caption-done-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* Actions Bar for Captured Preview */
+.glimpse-captured-actions-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 6;
+}
+
+.glimpse-action-discard-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.glimpse-action-discard-btn:hover {
+  transform: scale(1.08);
+  background: rgba(239, 68, 68, 0.8);
+}
+
+.glimpse-action-confirm-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.glimpse-action-confirm-btn:hover {
+  transform: scale(1.08);
+  background: var(--accent);
+}
+
+/* ── Modal & Manager ─────────────────────────────────────────────────── */
+.glimpse-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 200ms ease;
+}
+
+.glimpse-modal-card {
+  background: var(--bg-surface, #ffffff);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-hairline, #e2e8f0);
+}
+
+.glimpse-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-hairline, #e2e8f0);
+}
+
+.glimpse-modal-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.glimpse-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+}
+
+.glimpse-manager-body,
+.glimpse-detail-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.glimpse-empty-box {
+  padding: 32px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.glimpse-empty-box.dashed {
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 16px;
+}
+
+.empty-title {
+  font-weight: 600;
+  color: #475569;
+  margin: 0;
+}
+
+.empty-sub {
+  margin: 0;
+  font-size: 11.5px;
+}
+
+/* 3-Column Grid for Uploader Manager */
+.glimpse-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.glimpse-thumb-card {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-hairline, #cbd5e1);
+  transition: transform 150ms ease;
+}
+
+.glimpse-thumb-card:hover {
+  transform: scale(1.03);
+}
+
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-views-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Detail View (Uploader's Own Glimpse) */
+.glimpse-detail-image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-caption-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Amber Total Views Card (matches Dashboard countdown vibe) */
+.glimpse-amber-views-card {
+  background: var(--accent-soft, rgba(232, 71, 43, 0.1));
+  border: 1px solid rgba(232, 71, 43, 0.25);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.views-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.views-count-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Reactions breakdown row */
+.glimpse-reactions-breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.reaction-stat-item {
+  background: var(--bg-surface-2, #f8fafc);
+  border: 1px solid var(--border-hairline, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-emoji {
+  font-size: 18px;
+}
+
+.stat-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.glimpse-danger-delete-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 150ms ease;
+}
+
+.glimpse-danger-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.delete-asset-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  filter: invert(36%) sepia(86%) saturate(4649%) hue-rotate(345deg) brightness(98%) contrast(92%);
+}
+
+
+/* ── Explore Page Glimpse Viewer Tray ──────────────────────────────────── */
+.glimpse-viewer-tray-section {
+  margin-top: 24px;
+}
+
+.glimpse-tray-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 12.5px;
+  padding: 12px 0;
+}
+
+.glimpse-tray-empty-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1.5px dashed var(--border-hairline, #cbd5e1);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fanned-ghost-icon {
+  font-size: 26px;
+}
+
+.empty-text-wrap h4 {
+  margin: 0 0 2px 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+}
+
+.empty-text-wrap p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.4;
+}
+
+/* Horizontal Avatar Tray Row */
+.glimpse-tray-avatars-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 8px 4px 12px 4px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.glimpse-tray-avatars-row::-webkit-scrollbar {
+  display: none;
+}
+
+.glimpse-tray-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.avatar-ring-wrap {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: linear-gradient(135deg, var(--accent) 0%, #ff8c42 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 150ms ease;
+}
+
+.glimpse-tray-avatar-item:hover .avatar-ring-wrap {
+  transform: scale(1.08);
+}
+
+.tray-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg-base, #ffffff);
+}
+
+.tray-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-base, #ffffff);
+}
+
+.tray-count-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  border: 1.5px solid #ffffff;
+}
+
+.tray-student-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ── Full-Screen Fanned Card Stack Modal ──────────────────────────────── */
+.glimpse-stack-fullscreen-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  animation: fadeIn 200ms ease;
+}
+
+.glimpse-stack-topbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.stack-position-badge {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 14px;
+}
+
+.stack-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glimpse-stack-loader {
+  color: #ffffff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.glimpse-stack-end-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 32px 24px;
+  text-align: center;
+  color: #ffffff;
+  max-width: 320px;
+  cursor: pointer;
+}
+
+.end-sparkle-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.end-dismiss-btn {
+  margin-top: 16px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 3D Fanned Card Stack Container */
+.glimpse-stack-container {
+  position: relative;
+  width: 88vw;
+  max-width: 340px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glimpse-fanned-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #1e293b;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Fanned Ghost Cards behind the Front Card */
+.glimpse-fanned-card.ghost-back {
+  transform: rotate(-6deg) scale(0.92) translate3d(-10px, 8px, 0);
+  opacity: 0.4;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.glimpse-fanned-card.ghost-middle {
+  transform: rotate(5deg) scale(0.96) translate3d(8px, 4px, 0);
+  opacity: 0.75;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Front Active Card */
+.glimpse-fanned-card.front-card {
+  z-index: 3;
+  cursor: grab;
+  touch-action: none;
+}
+
+.glimpse-fanned-card.front-card:active {
+  cursor: grabbing;
+}
+
+.front-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.front-card-view-count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.front-card-caption-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 14px;
+  max-width: 65%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bottom Bar on Front Card */
+.front-card-bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5;
+}
+
+.front-card-uploader-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploader-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ffffff;
+}
+
+.uploader-avatar-initials {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
+}
+
+.uploader-name-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Reaction Panel directly below avatar */
+.front-card-reaction-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  align-self: flex-start;
+}
+
+.reaction-pill-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 14px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.reaction-pill-btn:hover {
+  transform: scale(1.15);
+}
+
+.reaction-pill-btn.active {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.pill-count {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.swipe-instruction-hint {
+  position: absolute;
+  bottom: -36px;
+  color: #94a3b8;
+  font-size: 11.5px;
+  margin: 0;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Live Camera Video Stream & Controls */
+.live-camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.glimpse-frame-flip-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  font-size: 15px;
+  transition: transform 150ms ease;
+}
+
+.glimpse-frame-flip-btn:hover {
+  transform: rotate(180deg) scale(1.08);
+}
+
+.glimpse-grant-cam-btn {
+  margin-top: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Compact Dashboard Glimpse Card ─────────────────────────────────────── */
+.glimpse-dashboard-compact-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-hairline, #e2e8f0);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.glimpse-dashboard-compact-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(232, 71, 43, 0.4);
+  box-shadow: 0 8px 24px rgba(232, 71, 43, 0.08);
+}
+
+.glimpse-compact-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.glimpse-compact-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--accent-soft, rgba(232, 71, 43, 0.1));
+  color: var(--accent);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.glimpse-compact-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.glimpse-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glimpse-title-row h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.glimpse-compact-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.glimpse-compact-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glimpse-open-cam-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(232, 71, 43, 0.25);
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.glimpse-open-cam-btn:hover {
+  transform: scale(1.04);
+  opacity: 0.95;
+}
+
+.glimpse-my-list-btn {
+  background: var(--bg-surface-2, #f1f5f9);
+  color: var(--text-main, #0f172a);
+  border: 1px solid var(--border-hairline, #cbd5e1);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 150ms ease;
+}
+
+.glimpse-my-list-btn:hover {
+  background: #e2e8f0;
+}
+
+/* Modal Camera Page Frame */
+.glimpse-camera-page-card {
+  background: var(--bg-surface, #ffffff);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid var(--border-hairline, #e2e8f0);
+}
+
+.glimpse-camera-page-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-page-frame {
+  max-width: 360px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Inline Glimpse Stack CSS ─────────────────────────────────────────── */
+.explore-glimpse-stack-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 0 48px 0;
+  width: 100%;
+}
+
+.glimpse-inline-stack-container {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Black Pill Shape Button (Below Date Card Widget) ──────────────────── */
+.dash-add-glimpse-row {
+  margin: 6px 0 12px 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.dash-add-glimpse-black-pill {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 7px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: transform 150ms ease, background 150ms ease;
+  font-family: inherit;
+}
+
+.dash-add-glimpse-black-pill:hover {
+  transform: scale(1.02);
+  background: #111111;
+  box-shadow: none !important;
+}
+
+.glimpse-pill-logo-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* ── Full-Page #111111 Camera Screen ─────────────────────────────────── */
+.glimpse-fullpage-camera-container {
+  position: fixed;
+  inset: 0;
+  background: #111111;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+  animation: fadeIn 200ms ease;
+  overflow-y: auto;
+}
+
+.glimpse-fullpage-topbar {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.glimpse-line-icon-back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #ffffff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.glimpse-line-icon-back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.glimpse-fullpage-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px 40px 16px;
+  gap: 24px;
+}
+
+.camera-fullpage-frame {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Camera Switch Icon at bottom right corner of camera viewer */
+.glimpse-cam-switch-corner-btn {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 200ms ease;
+}
+
+.glimpse-cam-switch-corner-btn:hover {
+  transform: rotate(180deg) scale(1.08);
+}
+
+.cam-switch-asset-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* Shutter Row & Gallery Asset Icon */
+.glimpse-fullpage-controls-row {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.glimpse-fullpage-shutter-btn {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  transition: transform 150ms ease;
+}
+
+.glimpse-fullpage-shutter-btn:hover {
+  transform: scale(1.06);
+}
+
+.glimpse-gallery-icon-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.glimpse-gallery-icon-btn:hover {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gallery-asset-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* Asset Icons in Gallery & Detail Views */
+.view-asset-icon-sm {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+}
+
+.view-asset-icon-md {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.detail-views-bottom-right {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-num-white,
+.pill-count-white {
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delete-asset-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  margin-right: 6px;
+}
+
+/* Bangla & English font styling */
+.bangla-caption-styled {
+  font-family: 'Hind Siliguri', 'Inter', sans-serif;
+  text-transform: uppercase;
+}
+
+/* ── Lottie Cat Playing Animation Empty State ─────────────────────────── */
+.explore-glimpse-stack-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 16px;
+  width: 100%;
+  background: #fbfbfb;
+  border: 1px dashed #cccccc;
+  border-radius: 20px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
+  min-height: 180px;
+  position: relative;
+}
+
+.light-theme-active .explore-glimpse-stack-wrapper {
+  background: #fafafa !important;
+  border-color: #e2e8f0 !important;
+}
+
+.glimpse-empty-cat-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.glimpse-cat-animation-box {
+  width: 110px;
+  height: 110px;
+  margin: 0 auto;
+}
+
+.glimpse-empty-cat-text {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.4;
+  max-width: 260px;
+}
