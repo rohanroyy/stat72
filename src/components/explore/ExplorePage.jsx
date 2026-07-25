@@ -160,7 +160,7 @@ export default function ExplorePage({ currentUser: propUser }) {
       try {
         const stored = localStorage.getItem('bahattor_logged_in_student');
         if (stored) setCurrentStudent(JSON.parse(stored));
-      } catch (_) {}
+      } catch (_) { }
     }
   }, [currentStudent]);
 
@@ -176,7 +176,7 @@ export default function ExplorePage({ currentUser: propUser }) {
             .select('id, name, mood, profile_picture, mood_selected_at')
             .not('mood', 'is', null);
           if (error) throw error;
-          
+
           const activeMoods = (data || []).filter(s => {
             if (!s.mood_selected_at) return false;
             return (now - new Date(s.mood_selected_at).getTime()) < twelveHours;
@@ -205,7 +205,7 @@ export default function ExplorePage({ currentUser: propUser }) {
     if (students.length > 0) {
       const styles = students.map((s, idx) => {
         const left = 5 + (idx * 37) % 70;
-        const top  = 10 + (idx * 29) % 60;
+        const top = 10 + (idx * 29) % 60;
         const speed = 14 + (idx * 4) % 12;
         const delay = -((idx * 3) % 15);
         const animIdx = (idx % 3) + 1;
@@ -218,7 +218,7 @@ export default function ExplorePage({ currentUser: propUser }) {
 
         return {
           left: `${left}%`,
-          top:  `${top}%`,
+          top: `${top}%`,
           animationName: `float-drift-${animIdx}`,
           animationDuration: `${speed}s`,
           animationDelay: `${delay}s`,
@@ -299,7 +299,7 @@ export default function ExplorePage({ currentUser: propUser }) {
         <div className="explore-game-card" onClick={() => setShowImposterGame(true)}>
           <div className="game-card-icon">🕵️‍♂️</div>
           <div className="game-card-details">
-            <h3>Play Guess the Imposter</h3>
+            <h3>Play Guess the Imposter(not ready yet.)</h3>
             <p>Deceive your friends or spot the odd drawing in this quick party game!</p>
           </div>
           <div className="game-card-action">
@@ -314,7 +314,7 @@ export default function ExplorePage({ currentUser: propUser }) {
 
       {/* Section 3: Coming Soon */}
       <div className="explore-section explore-coming-soon-section">
-        <span className="section-label-text">Feature Roadmap</span>
+        <span className="section-label-text">Other Features</span>
         <div className="section-label-line" />
 
         <div className="explore-coming-soon-card">
