@@ -168,7 +168,7 @@ export default function ExplorePage({ currentUser: propUser }) {
     async function loadMoods() {
       try {
         const now = Date.now();
-        const twelveHours = 12 * 60 * 60 * 1000;
+        const twentyFourHours = 24 * 60 * 60 * 1000;
 
         if (isSupabaseConfigured()) {
           const { data, error } = await supabase
@@ -179,7 +179,7 @@ export default function ExplorePage({ currentUser: propUser }) {
 
           const activeMoods = (data || []).filter(s => {
             if (!s.mood_selected_at) return false;
-            return (now - new Date(s.mood_selected_at).getTime()) < twelveHours;
+            return (now - new Date(s.mood_selected_at).getTime()) < twentyFourHours;
           });
           setStudents(activeMoods);
         } else {
@@ -188,7 +188,7 @@ export default function ExplorePage({ currentUser: propUser }) {
           const activeMoods = mockStudents.filter(s => {
             if (!s.mood) return false;
             if (!s.mood_selected_at) return false;
-            return (now - new Date(s.mood_selected_at).getTime()) < twelveHours;
+            return (now - new Date(s.mood_selected_at).getTime()) < twentyFourHours;
           });
           setStudents(activeMoods);
         }

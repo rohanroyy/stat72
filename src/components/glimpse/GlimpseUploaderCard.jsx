@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createGlimpse, getGlimpsesForUploader, deleteGlimpse, subscribeToGlimpses } from '../../services/glimpseService';
+import loveEmoji from './emojis/love.png';
+import happyEmoji from './emojis/haha.png';
+import sadEmoji from './emojis/sad.png';
+import wowEmoji from './emojis/wow.png';
+import angryEmoji from './emojis/angry.png';
 
 export default function GlimpseUploaderCard({ student }) {
   // Modal toggles
@@ -263,11 +268,13 @@ export default function GlimpseUploaderCard({ student }) {
     try {
       const formattedCaption = caption ? caption.trim().toUpperCase() : null;
       await createGlimpse(student.id, capturedImage, formattedCaption);
+      // Reset preview state but keep camera modal open — user closes it manually
       setCapturedImage(null);
       setCaption('');
       setShowCaptionInput(false);
-      setShowCameraModal(false);
       await loadMyGlimpses();
+      // Restart the live camera so user can take another glimpse
+      startCamera(cameraFacing);
     } catch (err) {
       console.error('Failed to upload glimpse:', err);
     } finally {
@@ -421,9 +428,10 @@ export default function GlimpseUploaderCard({ student }) {
                     onClick={handleUpload}
                     title="Confirm & Share Glimpse"
                     disabled={isUploading}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     {isUploading ? (
-                      <div className="pdf-loading-spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }} />
+                      <div className="pdf-loading-spinner" style={{ width: '18px', height: '18px', borderWidth: '2px', borderTopColor: '#111', margin: '0' }} />
                     ) : (
                       '✓'
                     )}
@@ -533,19 +541,23 @@ export default function GlimpseUploaderCard({ student }) {
                 {/* Reaction counts breakdown (Count text in WHITE #ffffff) */}
                 <div className="glimpse-reactions-breakdown-row">
                   <div className="reaction-stat-item">
-                    <span className="stat-emoji">❤️</span>
+                    <img src={loveEmoji} alt="love" className="stat-emoji-img" />
                     <span className="stat-num-white">{selectedGlimpse.reactionCounts?.love || 0}</span>
                   </div>
                   <div className="reaction-stat-item">
-                    <span className="stat-emoji">😄</span>
+                    <img src={happyEmoji} alt="happy" className="stat-emoji-img" />
                     <span className="stat-num-white">{selectedGlimpse.reactionCounts?.happy || 0}</span>
                   </div>
                   <div className="reaction-stat-item">
-                    <span className="stat-emoji">😢</span>
+                    <img src={sadEmoji} alt="sad" className="stat-emoji-img" />
                     <span className="stat-num-white">{selectedGlimpse.reactionCounts?.sad || 0}</span>
                   </div>
                   <div className="reaction-stat-item">
-                    <span className="stat-emoji">😡</span>
+                    <img src={wowEmoji} alt="wow" className="stat-emoji-img" />
+                    <span className="stat-num-white">{selectedGlimpse.reactionCounts?.wow || 0}</span>
+                  </div>
+                  <div className="reaction-stat-item">
+                    <img src={angryEmoji} alt="angry" className="stat-emoji-img" />
                     <span className="stat-num-white">{selectedGlimpse.reactionCounts?.angry || 0}</span>
                   </div>
                 </div>

@@ -2,9 +2,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_GLIMPSES_KEY = 'bahattor_glimpses';
 const STORAGE_VIEWS_KEY    = 'bahattor_glimpse_views';
-const TWELVE_HOURS_MS      = 12 * 60 * 60 * 1000;
+const TWELVE_HOURS_MS      = 24 * 60 * 60 * 1000;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getNowUTC() {
   return new Date().getTime();
@@ -29,7 +29,7 @@ function isTableMissingError(error) {
   );
 }
 
-// ── LocalStorage Mock Helpers ────────────────────────────────────────────────
+// â”€â”€ LocalStorage Mock Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function readLocalGlimpses() {
   try {
@@ -64,7 +64,7 @@ function notifyLocalChange() {
   } catch (_) {}
 }
 
-// ── Fallback Implementations ────────────────────────────────────────────────
+// â”€â”€ Fallback Implementations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function createGlimpseLocally(glimpse) {
   const local = readLocalGlimpses();
@@ -74,7 +74,7 @@ function createGlimpseLocally(glimpse) {
   return glimpse;
 }
 
-// ── Core API ──────────────────────────────────────────────────────────────────
+// â”€â”€ Core API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * 3.1 createGlimpse(uploaderId, imageUrl, caption)
@@ -95,8 +95,8 @@ export async function createGlimpse(uploaderId, imageUrl, caption = null) {
     createdAt: nowStr,
     view_count: 0,
     viewCount: 0,
-    reaction_counts: { love: 0, happy: 0, sad: 0, angry: 0 },
-    reactionCounts: { love: 0, happy: 0, sad: 0, angry: 0 }
+    reaction_counts: { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 },
+    reactionCounts: { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
   };
 
   if (!isSupabaseConfigured()) {
@@ -111,7 +111,7 @@ export async function createGlimpse(uploaderId, imageUrl, caption = null) {
       caption: cleanCaption,
       created_at: nowStr,
       view_count: 0,
-      reaction_counts: { love: 0, happy: 0, sad: 0, angry: 0 }
+      reaction_counts: { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
     }]);
 
     if (error) {
@@ -339,7 +339,7 @@ export async function openGlimpseStack(viewerId, uploaderId) {
         caption: g.caption || null,
         createdAt: g.created_at || g.createdAt,
         viewCount: g.view_count ?? g.viewCount ?? 0,
-        reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 }
+        reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
       })),
       uploaderStudent: uploaderStudent || { id: uploaderId, name: 'Student' }
     };
@@ -402,7 +402,7 @@ export async function openGlimpseStack(viewerId, uploaderId) {
       caption: g.caption || null,
       createdAt: g.created_at || g.createdAt,
       viewCount: g.view_count ?? g.viewCount ?? 0,
-      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 }
+      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
     })),
     uploaderStudent: uploaderStudent || { id: uploaderId, name: 'Student' }
   };
@@ -488,7 +488,7 @@ export async function burnGlimpseView(glimpseId, viewerId) {
 export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
   if (!viewerId || !glimpseId) return;
 
-  const validTypes = ['love', 'happy', 'sad', 'angry'];
+  const validTypes = ['love', 'happy', 'sad', 'wow', 'angry'];
   if (!validTypes.includes(reactionType)) return;
 
   const nowStr = new Date().toISOString();
@@ -528,7 +528,7 @@ export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
     const glimpses = readLocalGlimpses();
     const g = glimpses.find(item => item.id === glimpseId);
     if (g) {
-      const counts = g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 };
+      const counts = g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
       if (prevReaction && counts[prevReaction] > 0) counts[prevReaction]--;
       if (nextReaction) counts[nextReaction] = (counts[nextReaction] || 0) + 1;
       g.reaction_counts = counts;
@@ -583,7 +583,7 @@ export async function reactToGlimpse(glimpseId, viewerId, reactionType) {
 
     const { data: glimpseData } = await supabase.from('glimpses').select('reaction_counts').eq('id', glimpseId).maybeSingle();
     if (glimpseData) {
-      const counts = glimpseData.reaction_counts || { love: 0, happy: 0, sad: 0, angry: 0 };
+      const counts = glimpseData.reaction_counts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 };
       if (prevReaction && counts[prevReaction] > 0) counts[prevReaction]--;
       if (nextReaction) counts[nextReaction] = (counts[nextReaction] || 0) + 1;
       await supabase.from('glimpses').update({ reaction_counts: counts }).eq('id', glimpseId);
@@ -614,7 +614,7 @@ export async function getGlimpsesForUploader(uploaderId) {
       caption: g.caption || null,
       createdAt: g.created_at || g.createdAt,
       viewCount: g.view_count ?? g.viewCount ?? 0,
-      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 }
+      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
     }));
   };
 
@@ -643,7 +643,7 @@ export async function getGlimpsesForUploader(uploaderId) {
       caption: g.caption || null,
       createdAt: g.created_at || g.createdAt,
       viewCount: g.view_count ?? g.viewCount ?? 0,
-      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 }
+      reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
     }));
   } catch (err) {
     if (isTableMissingError(err)) return getLocalUploaderGlimpses();
@@ -797,11 +797,68 @@ export async function getAllUnburnedGlimpses(viewerId) {
         caption: g.caption || null,
         createdAt: g.created_at || g.createdAt,
         viewCount: g.view_count ?? g.viewCount ?? 0,
-        reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, angry: 0 },
+        reactionCounts: g.reaction_counts || g.reactionCounts || { love: 0, happy: 0, sad: 0, wow: 0, angry: 0 },
         uploaderStudent: studentsMap.get(uploaderId) || { id: uploaderId, name: 'Student' }
       });
     });
   });
 
   return flattened;
+}
+
+// ── Auto-Cleanup: Delete Expired Glimpses ──────────────────────────────────
+
+/**
+ * Deletes all glimpses (and their associated views) that have passed the
+ * expiry window (TWELVE_HOURS_MS = 24 hours). Should be called on app mount.
+ */
+export async function cleanupExpiredGlimpses() {
+  const cutoff = new Date(Date.now() - TWELVE_HOURS_MS).toISOString();
+
+  // ── Local storage cleanup ─────────────────────────────────────────
+  try {
+    const localGlimpses = readLocalGlimpses();
+    const expiredIds = new Set(
+      localGlimpses
+        .filter(g => !isGlimpseActive(g.created_at || g.createdAt))
+        .map(g => g.id)
+    );
+
+    if (expiredIds.size > 0) {
+      writeLocalGlimpses(localGlimpses.filter(g => !expiredIds.has(g.id)));
+
+      const views = readLocalViews();
+      writeLocalViews(views.filter(v => !expiredIds.has(v.glimpse_id || v.glimpseId)));
+    }
+  } catch (_) {}
+
+  // ── Supabase cleanup ──────────────────────────────────────────────
+  if (!isSupabaseConfigured()) return;
+
+  try {
+    // First delete associated views to avoid FK constraint errors
+    const { data: expiredRows } = await supabase
+      .from('glimpses')
+      .select('id')
+      .lt('created_at', cutoff);
+
+    const expiredIds = (expiredRows || []).map(r => r.id);
+
+    if (expiredIds.length === 0) return;
+
+    // Delete views for expired glimpses
+    await supabase
+      .from('glimpse_views')
+      .delete()
+      .in('glimpse_id', expiredIds);
+
+    // Delete the expired glimpses themselves
+    await supabase
+      .from('glimpses')
+      .delete()
+      .lt('created_at', cutoff);
+  } catch (err) {
+    // Non-critical — silently fail so it never breaks the app
+    console.warn('Glimpse cleanup failed (non-critical):', err?.message);
+  }
 }

@@ -5330,6 +5330,7 @@ a:focus-visible {
 /* ── Explore Page Glimpse Viewer Tray ──────────────────────────────────── */
 .glimpse-viewer-tray-section {
   margin-top: 24px;
+  gap: 4px;
 }
 
 .glimpse-tray-skeleton {
@@ -5558,7 +5559,7 @@ a:focus-visible {
 .glimpse-fanned-card {
   position: absolute;
   inset: 0;
-  border-radius: 24px;
+  border-radius: 32px;
   overflow: hidden;
   background: #1e293b;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -5914,7 +5915,7 @@ a:focus-visible {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 16px 0 48px 0;
+  padding: 8px 0 16px 0;
   width: 100%;
 }
 
@@ -6142,6 +6143,26 @@ a:focus-visible {
   font-weight: 700;
 }
 
+/* Custom PNG emoji images in reaction buttons */
+.reaction-emoji-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Custom PNG emoji images in uploader detail stat row */
+.stat-emoji-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
 .delete-asset-icon {
   width: 16px;
   height: 16px;
@@ -6160,14 +6181,15 @@ a:focus-visible {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 12px 10px;
+  padding: 0 10px 4px 10px;
   width: 100%;
   background: #fbfbfb;
   border: 1px dashed #cccccc;
   border-radius: 20px;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
-  min-height: 180px;
+  min-height: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .light-theme-active .explore-glimpse-stack-wrapper {
@@ -6184,16 +6206,28 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   width: 100%;
   max-width: 340px;
   margin: 0 auto;
 }
 
 .glimpse-cat-animation-box {
-  width: 180px;
-  height: 180px;
+  width: 160px;
+  height: 130px;  /* shorter than width to clip Lottie's internal top/bottom whitespace */
   margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Force the inner Lottie SVG to be taller so it fills the cropped box */
+.glimpse-cat-animation-box > svg,
+.glimpse-cat-animation-box > div > svg {
+  width: 160px !important;
+  height: 160px !important;
+  margin-top: -15px;  /* shift animation up to crop bottom whitespace */
 }
 
 .glimpse-empty-cat-text {

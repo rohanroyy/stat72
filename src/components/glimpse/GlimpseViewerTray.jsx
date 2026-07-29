@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import lottie from 'lottie-web';
-import { getAllUnburnedGlimpses, burnGlimpseView, reactToGlimpse, subscribeToGlimpses } from '../../services/glimpseService';
+import { getAllUnburnedGlimpses, burnGlimpseView, reactToGlimpse, subscribeToGlimpses, cleanupExpiredGlimpses } from '../../services/glimpseService';
+import loveEmoji from './emojis/love.png';
+import happyEmoji from './emojis/haha.png';
+import sadEmoji from './emojis/sad.png';
+import wowEmoji from './emojis/wow.png';
+import angryEmoji from './emojis/angry.png';
 
 // Lottie Animation component for Empty / Finished state
 function CatEmptyAnimation() {
@@ -64,7 +69,10 @@ export default function GlimpseViewerTray({ currentStudent }) {
   }, [viewerId]);
 
   useEffect(() => {
-    loadUnburnedGlimpses();
+    // Clean up expired glimpses from DB first, then load fresh list
+    cleanupExpiredGlimpses().finally(() => {
+      loadUnburnedGlimpses();
+    });
     const unsub = subscribeToGlimpses(() => {
       loadUnburnedGlimpses();
     });
@@ -190,7 +198,7 @@ export default function GlimpseViewerTray({ currentStudent }) {
 
   return (
     <div className="explore-section glimpse-viewer-tray-section">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
         <span className="section-label-text">Batch Glimpses</span>
         {glimpses.length > 0 && currentIndex < glimpses.length && (
           <span className="glimpse-badge-pill" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -198,7 +206,7 @@ export default function GlimpseViewerTray({ currentStudent }) {
           </span>
         )}
       </div>
-      <div className="section-label-line" style={{ marginBottom: '6px' }} />
+      <div className="section-label-line" style={{ marginBottom: '2px' }} />
 
       <div className="explore-glimpse-stack-wrapper">
         {isLoading ? (
@@ -259,10 +267,11 @@ export default function GlimpseViewerTray({ currentStudent }) {
                 {/* Single-Select Reaction Panel */}
                 <div className="front-card-reaction-panel" onClick={(e) => e.stopPropagation()}>
                   {[
-                    { type: 'love', emoji: '❤️' },
-                    { type: 'happy', emoji: '😄' },
-                    { type: 'sad', emoji: '😢' },
-                    { type: 'angry', emoji: '😡' },
+                    { type: 'love',  img: loveEmoji },
+                    { type: 'happy', img: happyEmoji },
+                    { type: 'sad',   img: sadEmoji },
+                    { type: 'wow',   img: wowEmoji },
+                    { type: 'angry', img: angryEmoji },
                   ].map((item) => {
                     const isActive = userReactions[currentGlimpse.id] === item.type;
                     const count = currentGlimpse.reactionCounts?.[item.type] || 0;
@@ -274,7 +283,7 @@ export default function GlimpseViewerTray({ currentStudent }) {
                         onClick={() => handleReaction(item.type)}
                         title={item.type}
                       >
-                        <span className="pill-emoji">{item.emoji}</span>
+                        <img src={item.img} alt={item.type} className="reaction-emoji-img" />
                         {count > 0 && <span className="pill-count-white">{count}</span>}
                       </button>
                     );
