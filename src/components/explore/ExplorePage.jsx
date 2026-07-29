@@ -201,40 +201,70 @@ export default function ExplorePage({ currentUser: propUser }) {
     loadMoods();
   }, []);
 
+  // Reactive board width — updates on resize via ResizeObserver
+  const [boardWidth, setBoardWidth] = useState(window.innerWidth);
+
   useEffect(() => {
-    if (students.length > 0) {
-      const styles = students.map((s, idx) => {
-        const left = 5 + (idx * 37) % 70;
-        const top = 10 + (idx * 29) % 60;
-        const speed = 14 + (idx * 4) % 12;
-        const delay = -((idx * 3) % 15);
-        const animIdx = (idx % 3) + 1;
+    const el = document.querySelector('.explore-moods-board');
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setBoardWidth(entry.contentRect.width || window.innerWidth);
+      }
+    });
+    ro.observe(el);
+    // Set initial width immediately
+    setBoardWidth(el.offsetWidth || window.innerWidth);
+    return () => ro.disconnect();
+  }, [loading]); // re-attach after loading is done and board is in DOM
 
-        // Subtle drift — ±10px
-        const dx1 = Math.floor(Math.random() * 20) - 10;
-        const dy1 = Math.floor(Math.random() * 20) - 10;
-        const dx2 = Math.floor(Math.random() * 20) - 10;
-        const dy2 = Math.floor(Math.random() * 20) - 10;
+  // ── Grid config (derived from boardWidth) ──────────────────────────
+  const COLS    = boardWidth >= 600 ? 6 : 3;
+  const CELL_W  = Math.floor(boardWidth / COLS);
+  const CELL_H  = 110;
+  // Bubble is ~100px wide, ~90px tall — offset to anchor from top-left, not center
+  const BUB_W   = 100;
+  const BUB_H   = 90;
 
-        return {
-          left: `${left}%`,
-          top: `${top}%`,
-          animationName: `float-drift-${animIdx}`,
-          animationDuration: `${speed}s`,
-          animationDelay: `${delay}s`,
-          '--dx1': `${dx1}px`,
-          '--dy1': `${dy1}px`,
-          '--dx2': `${dx2}px`,
-          '--dy2': `${dy2}px`,
-        };
-      });
-      setBubbleStyles(styles);
-    }
-  }, [students]);
+  useEffect(() => {
+    if (students.length === 0) return;
 
+    const JITTER = 8;
+
+    const styles = students.map((_, idx) => {
+      const col = idx % COLS;
+      const row = Math.floor(idx / COLS);
+
+      // Top-left of where bubble should be placed (cell center minus half bubble size)
+      const bx = col * CELL_W + (CELL_W - BUB_W) / 2 + (Math.floor(Math.random() * JITTER * 2) - JITTER);
+      const by = row * CELL_H + (CELL_H - BUB_H) / 2 + (Math.floor(Math.random() * JITTER * 2) - JITTER);
+
+      const speed    = 14 + (idx * 4) % 12;
+      const delay    = -((idx * 3) % 15);
+      const animIdx  = (idx % 3) + 1;
+
+      return {
+        left: `${Math.max(0, bx)}px`,
+        top:  `${Math.max(0, by)}px`,
+        // NO transform here — float-drift keyframes use transform; adding one here would conflict
+        animationName:     `float-drift-${animIdx}`,
+        animationDuration: `${speed}s`,
+        animationDelay:    `${delay}s`,
+        '--dx1': `${Math.floor(Math.random() * 16) - 8}px`,
+        '--dy1': `${Math.floor(Math.random() * 16) - 8}px`,
+        '--dx2': `${Math.floor(Math.random() * 16) - 8}px`,
+        '--dy2': `${Math.floor(Math.random() * 16) - 8}px`,
+      };
+    });
+
+    setBubbleStyles(styles);
+  }, [students, boardWidth, COLS, CELL_W]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Board height: ceil(bubbles / cols) rows × CELL_H, min 180px
   const boardHeight = students.length === 0
     ? 180
-    : Math.max(180, Math.min(800, 150 + students.length * 50));
+    : Math.max(180, Math.ceil(students.length / COLS) * CELL_H + 20);
+
 
   if (showImposterGame) {
     return <ImposterGame onClose={() => setShowImposterGame(false)} />;

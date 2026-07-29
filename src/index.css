@@ -5615,20 +5615,21 @@ a:focus-visible {
 
 .front-card-caption-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
+  top: 14px;
+  left: 14px;
+  background: none;
+  backdrop-filter: none;
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 5px 12px;
-  border-radius: 14px;
-  max-width: 65%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  border-radius: 0;
+  max-width: 70%;
+  border: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 
 /* Bottom Bar on Front Card */
@@ -5951,11 +5952,12 @@ a:focus-visible {
   border-color: var(--border-hairline, #e2e8f0);
 }
 
-/* Below-card reaction panel: lighter style */
+/* Below-card reaction panel: lighter style, centered */
 .glimpse-below-card-info .front-card-reaction-panel {
   background: rgba(15, 23, 42, 0.06);
   border: 1px solid rgba(15, 23, 42, 0.12);
   backdrop-filter: none;
+  align-self: center;
 }
 
 /* Make reaction emojis normal size in below-card panel */
