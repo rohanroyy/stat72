@@ -6288,3 +6288,776 @@ a:focus-visible {
   line-height: 1.4;
   max-width: 260px;
 }
+
+/* =====================================================
+   Exam Detail Panel
+   ===================================================== */
+
+.exam-detail-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  animation: edp-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
+}
+
+@keyframes edp-slide-in {
+  from { transform: translateX(100%); opacity: 0.5; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.edp-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 8px;
+  flex-shrink: 0;
+}
+
+.edp-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.edp-back-btn:hover {
+  background: var(--bg-surface-2);
+}
+
+.edp-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 20px 120px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Exam Info Block ──────────────────────────────────────────── */
+
+.edp-exam-block {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-hairline);
+  margin-bottom: 24px;
+}
+
+.edp-past-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-bottom: 8px;
+}
+
+.edp-exam-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+
+.edp-exam-date {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.edp-exam-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.edp-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.edp-meta-item--full {
+  width: 100%;
+}
+
+.edp-meta-item svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+/* ── Suggestions Section ─────────────────────────────────────── */
+
+.edp-suggestions-section {
+  padding-bottom: 24px;
+}
+
+.edp-suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.edp-suggestions-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.edp-add-suggestion-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.edp-add-suggestion-btn:hover {
+  background: rgba(232, 71, 43, 0.18);
+}
+
+.edp-sugg-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.edp-sugg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.edp-sugg-empty p {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.edp-sugg-empty-sub {
+  font-size: 12px !important;
+  color: var(--text-tertiary) !important;
+}
+
+.edp-sugg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =====================================================
+   Suggestion Card
+   ===================================================== */
+
+.suggestion-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease;
+}
+
+.suggestion-card-body {
+  margin-bottom: 10px;
+}
+
+.suggestion-text {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.suggestion-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-top: 6px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.suggestion-attachment--clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.suggestion-attachment--clickable:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.suggestion-attachment--clickable:hover .suggestion-attachment-icon {
+  color: var(--accent);
+}
+
+.suggestion-attachment--clickable:active {
+  transform: scale(0.98);
+}
+
+.suggestion-attachment--clickable:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.suggestion-attachment-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.suggestion-attachment-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.suggestion-uploader {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.suggestion-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.suggestion-action-btn:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+}
+
+.suggestion-action-btn--delete:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* =====================================================
+   Add Suggestion Modal
+   ===================================================== */
+
+.sugg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: sugg-backdrop-in 0.2s ease both;
+}
+
+@keyframes sugg-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sugg-modal-sheet {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
+  animation: sugg-sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
+}
+
+@keyframes sugg-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.sugg-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.sugg-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sugg-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sugg-modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+}
+
+.sugg-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 24px;
+  overflow-y: auto;
+}
+
+.sugg-modal-textarea {
+  width: 100%;
+  min-height: 90px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.sugg-modal-textarea:focus {
+  border-color: var(--accent);
+}
+
+.sugg-modal-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.sugg-attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+}
+
+.sugg-attachment-preview-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.sugg-attachment-preview-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sugg-attachment-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.sugg-attachment-remove:hover {
+  color: var(--accent);
+}
+
+.sugg-pick-drive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px dashed var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.sugg-pick-drive-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sugg-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.sugg-cancel-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sugg-cancel-btn:hover {
+  background: var(--bg-surface-2);
+}
+
+.sugg-submit-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 22px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sugg-submit-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.sugg-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sugg-submit-btn--danger {
+  background: var(--accent);
+}
+
+/* ── Drive Picker ─────────────────────────────────────────────── */
+
+.sugg-picker-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.sugg-picker-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.sugg-picker-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sugg-picker-back:hover {
+  background: var(--bg-surface-2);
+}
+
+.sugg-picker-breadcrumb {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sugg-picker-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0 24px;
+}
+
+.sugg-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.sugg-picker-item:hover {
+  background: var(--bg-surface-2);
+}
+
+.sugg-picker-item--select-folder {
+  border-bottom: 1px solid var(--border-hairline);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.sugg-picker-item-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.sugg-picker-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sugg-picker-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.sugg-picker-empty {
+  text-align: center;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* ── Confirm Delete Sheet ─────────────────────────────────────── */
+
+.sugg-confirm-sheet {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 20px 20px 24px;
+  margin-bottom: 24px;
+  animation: sugg-sheet-up 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sugg-confirm-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.sugg-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* =====================================================
+   Suggestion Folder Viewer
+   ===================================================== */
+
+.sfv-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 350; /* above exam-detail-panel (300), below modal (400) */
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: edp-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sfv-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.sfv-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.sfv-back-btn:hover {
+  background: var(--bg-surface-2);
+}
+
+.sfv-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sfv-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sfv-refresh-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+}
+
+.sfv-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sfv-crumb-btn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.sfv-crumb-btn:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.sfv-crumb-btn:not(:disabled):hover {
+  background: var(--accent-soft);
+}
+
+.sfv-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

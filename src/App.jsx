@@ -22,6 +22,7 @@ import ExplorePage from './components/explore/ExplorePage';
 import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey } from './config/drive';
 import { getTelegramConfig, saveTelegramConfig, clearTelegramConfig } from './services/telegramService';
 import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage, subscribeToExams } from './services/examService';
+import { fetchTopperIds } from './services/suggestionService';
 import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
 import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings } from './services/settingsService';
 import { loadAppData } from './services/dataService';
@@ -275,6 +276,12 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   });
 
   const [examsList, setExamsList] = useState(() => initialData?.exams || []);
+  const [topperIds, setTopperIds] = useState([]);
+
+  // Load topper IDs on boot
+  useEffect(() => {
+    fetchTopperIds().then(setTopperIds).catch(console.error);
+  }, []);
 
   // Initialize push notifications for upcoming exams/events
   useEffect(() => {
@@ -610,11 +617,25 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   const handleOpenFile = useCallback((file) => {
     setViewerFile(file);
+    // Push a history entry so browser/device back closes the viewer
+    window.history.pushState({ viewerOpen: true }, '');
   }, []);
 
   const handleCloseViewer = useCallback(() => {
     setViewerFile(null);
   }, []);
+
+  // Listen for browser/device back while viewer is open
+  useEffect(() => {
+    if (!viewerFile) return;
+    const onPopState = (e) => {
+      if (!e.state?.viewerOpen) {
+        setViewerFile(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [viewerFile]);
 
   const renderViewer = () => {
     if (!viewerFile) return null;
@@ -755,6 +776,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         <ExamCalendar
           exams={examsList}
           onAddExam={null} // No inline add button on calendar for general users
+          currentUser={currentUser}
+          topperIds={topperIds}
+          foldersList={foldersList}
+          onOpenFile={handleOpenFile}
         />
       );
     }

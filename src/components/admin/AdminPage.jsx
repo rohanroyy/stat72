@@ -9,6 +9,7 @@ import {
 } from '../../services/telegramService';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification, deleteBroadcastNotification } from '../../services/broadcastService';
+import { fetchTopperIds, saveTopperIds } from '../../services/suggestionService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -53,6 +54,11 @@ export default function AdminPage({
   const [examNotes, setExamNotes] = useState('');
   const [examSaveStatus, setExamSaveStatus] = useState('');
 
+  // Toppers
+  const [topperIds, setTopperIds] = useState([]);
+  const [topperSearchQuery, setTopperSearchQuery] = useState('');
+  const [topperSaveStatus, setTopperSaveStatus] = useState('');
+
   // Notifications Panel states
   const [students, setStudents] = useState([]);
   const [broadcasts, setBroadcasts] = useState([]);
@@ -66,6 +72,7 @@ export default function AdminPage({
   useEffect(() => {
     fetchAllStudents().then(setStudents).catch(err => console.error('Failed to load students:', err));
     fetchBroadcastNotifications().then(setBroadcasts).catch(err => console.error('Failed to load broadcasts:', err));
+    fetchTopperIds().then(setTopperIds).catch(err => console.error('Failed to load toppers:', err));
   }, []);
 
   const filteredStudents = students.filter(s => {
@@ -418,6 +425,33 @@ export default function AdminPage({
       syncToBridge('studydock_exams', JSON.stringify(updated || []));
     } catch (err) {
       alert(`Failed to delete exam: ${err.message}`);
+    }
+  };
+
+  // ── Toppers ────────────────────────────────────────────────────────────────
+  const filteredTopperStudents = students.filter(s => {
+    const q = topperSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (s.name || '').toLowerCase().includes(q) ||
+           (s.class_roll || '').toLowerCase().includes(q) ||
+           (s.registration_number || '').toLowerCase().includes(q);
+  });
+
+  const handleToggleTopper = (id) => {
+    setTopperIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSaveToppers = async () => {
+    setTopperSaveStatus('Saving...');
+    try {
+      await saveTopperIds(topperIds);
+      setTopperSaveStatus('Saved!');
+      setTimeout(() => setTopperSaveStatus(''), 3000);
+    } catch (err) {
+      setTopperSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setTopperSaveStatus(''), 5000);
     }
   };
 
@@ -994,6 +1028,117 @@ export default function AdminPage({
             ))}
           </div>
         )}
+      </section>
+
+      {/* ── Topper Access Management ───────────────────────────────── */}
+      <section className="admin-section" id="admin-topper-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+          Topper Access
+        </h3>
+
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.6' }}>
+          Selected students can add suggestions to exam detail panels in the app.
+        </p>
+
+        {/* Current toppers */}
+        {topperIds.length > 0 && (
+          <div style={{ marginBottom: '14px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {topperIds.map(tid => {
+              const s = students.find(st => st.id === tid);
+              const label = s ? s.name : `ID: ${tid.slice(0, 8)}`;
+              return (
+                <span
+                  key={tid}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    fontSize: '12px', fontWeight: '600',
+                    background: 'rgba(232,71,43,0.1)', color: 'var(--accent)',
+                    border: '1px solid var(--accent-border)',
+                    borderRadius: '100px', padding: '3px 10px 3px 8px',
+                  }}
+                >
+                  {label}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTopper(tid)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', lineHeight: 1, padding: 0 }}
+                    aria-label={`Remove ${label}`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Search + select students */}
+        <div style={{
+          background: 'var(--bg-surface-2)', border: '1px solid var(--border-hairline)',
+          borderRadius: 'var(--radius-sm)', padding: '12px',
+          maxHeight: '220px', display: 'flex', flexDirection: 'column', gap: '8px',
+        }}>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Search students..."
+            value={topperSearchQuery}
+            onChange={e => setTopperSearchQuery(e.target.value)}
+            style={{ height: '36px', fontSize: '12.5px', marginBottom: '4px' }}
+          />
+          <div style={{ overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }}>
+            {filteredTopperStudents.length === 0 ? (
+              <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px' }}>
+                No students found
+              </div>
+            ) : (
+              filteredTopperStudents.map(student => {
+                const isTopper = topperIds.includes(student.id);
+                return (
+                  <label
+                    key={student.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px',
+                      cursor: 'pointer',
+                      color: isTopper ? 'var(--accent)' : 'var(--text-main)',
+                      background: isTopper ? 'rgba(232, 71, 43, 0.04)' : 'transparent',
+                      padding: '4px 6px', borderRadius: '4px', transition: 'background 100ms ease',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isTopper}
+                      onChange={() => handleToggleTopper(student.id)}
+                    />
+                    <span style={{ fontWeight: isTopper ? '600' : 'normal' }}>{student.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                      (Roll: {student.class_roll})
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px' }}>
+          <button type="button" className="admin-btn" onClick={handleSaveToppers}>
+            Save Topper List
+          </button>
+          {topperSaveStatus && (
+            <span style={{
+              color: topperSaveStatus.startsWith('Error') ? 'var(--accent)' : 'var(--gold-600)',
+              fontSize: '13px', fontWeight: '500',
+            }}>
+              {topperSaveStatus}
+            </span>
+          )}
+        </div>
       </section>
 
       {/* ── Exam Schedule Management ──────────────────────────────── */}

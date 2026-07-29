@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import ImposterGame from './ImposterGame';
+// import ImposterGame from './ImposterGame'; // hidden until ready
 import GlimpseViewerTray from '../glimpse/GlimpseViewerTray';
 
 /**
@@ -151,7 +151,7 @@ export default function ExplorePage({ currentUser: propUser }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bubbleStyles, setBubbleStyles] = useState([]);
-  const [showImposterGame, setShowImposterGame] = useState(false);
+  // const [showImposterGame, setShowImposterGame] = useState(false); // hidden until ready
 
   const [currentStudent, setCurrentStudent] = useState(propUser || null);
 
@@ -266,9 +266,10 @@ export default function ExplorePage({ currentUser: propUser }) {
     : Math.max(180, Math.ceil(students.length / COLS) * CELL_H + 20);
 
 
-  if (showImposterGame) {
-    return <ImposterGame onClose={() => setShowImposterGame(false)} />;
-  }
+  // Imposter Game hidden until ready
+  // if (showImposterGame) {
+  //   return <ImposterGame onClose={() => setShowImposterGame(false)} />;
+  // }
 
   return (
     <div className="explore-container">
@@ -321,26 +322,14 @@ export default function ExplorePage({ currentUser: propUser }) {
       {/* Section 1.5: Glimpse Photo Viewing Option Tray */}
       <GlimpseViewerTray currentStudent={currentStudent} />
 
-      {/* Section 2: Guess the Imposter Mini Game */}
-      <div className="explore-section">
+      {/* Section 2: Guess the Imposter — HIDDEN until ready */}
+      {/* <div className="explore-section">
         <span className="section-label-text">Guess the Imposter</span>
         <div className="section-label-line" />
-
         <div className="explore-game-card" onClick={() => setShowImposterGame(true)}>
-          <div className="game-card-icon">🕵️‍♂️</div>
-          <div className="game-card-details">
-            <h3>Play Guess the Imposter(not ready yet.)</h3>
-            <p>Deceive your friends or spot the odd drawing in this quick party game!</p>
-          </div>
-          <div className="game-card-action">
-            <span>Play</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </div>
+          ...
         </div>
-      </div>
+      </div> */}
 
       {/* Section 3: Coming Soon */}
       <div className="explore-section explore-coming-soon-section">
