@@ -5559,11 +5559,10 @@ a:focus-visible {
 .glimpse-fanned-card {
   position: absolute;
   inset: 0;
-  border-radius: 32px;
+  border-radius: 50px;
   overflow: hidden;
   background: #1e293b;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Fanned Ghost Cards behind the Front Card */
@@ -5917,6 +5916,55 @@ a:focus-visible {
   align-items: center;
   padding: 8px 0 16px 0;
   width: 100%;
+}
+
+.glimpse-inline-stack-outer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 320px;
+  padding-top: 12px;
+}
+
+/* Below-card section: uploader info + reaction pill row */
+.glimpse-below-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 0 4px;
+}
+
+/* Override uploader name color when below the card (not on image) */
+.glimpse-below-card-info .uploader-name-text {
+  color: var(--text-main, #0f172a);
+  text-shadow: none;
+  font-size: 13.5px;
+}
+
+/* Override uploader avatar border when below card */
+.glimpse-below-card-info .uploader-avatar-img,
+.glimpse-below-card-info .uploader-avatar-initials {
+  border-color: var(--border-hairline, #e2e8f0);
+}
+
+/* Below-card reaction panel: lighter style */
+.glimpse-below-card-info .front-card-reaction-panel {
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  backdrop-filter: none;
+}
+
+/* Make reaction emojis normal size in below-card panel */
+.glimpse-below-card-info .reaction-pill-btn {
+  padding: 5px 9px;
+}
+
+.glimpse-below-card-info .pill-count-white {
+  color: var(--text-main, #0f172a) !important;
 }
 
 .glimpse-inline-stack-container {

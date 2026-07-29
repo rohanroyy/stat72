@@ -224,76 +224,76 @@ export default function GlimpseViewerTray({ currentStudent }) {
           </div>
         ) : (
           /* INLINE 3D FAN STACK */
-          <div className="glimpse-inline-stack-container">
-            {/* Background Ghost Card 2 (backmost) */}
-            {currentIndex + 2 < glimpses.length && (
-              <div className="glimpse-fanned-card ghost-back" />
-            )}
-
-            {/* Background Ghost Card 1 (middle) */}
-            {currentIndex + 1 < glimpses.length && (
-              <div className="glimpse-fanned-card ghost-middle" />
-            )}
-
-            {/* FRONT CARD (Interactive Swipeable) */}
-            <div ref={cardRef} className="glimpse-fanned-card front-card">
-              {/* Image */}
-              <img
-                src={currentGlimpse.imageUrl}
-                alt="Glimpse"
-                className="front-card-img"
-                draggable={false}
-              />
-
-              {/* Caption Overlay */}
-              {currentGlimpse.caption && (
-                <div className="front-card-caption-overlay bangla-caption-styled">
-                  {currentGlimpse.caption}
-                </div>
+          <div className="glimpse-inline-stack-outer">
+            <div className="glimpse-inline-stack-container">
+              {/* Background Ghost Card 2 (backmost) */}
+              {currentIndex + 2 < glimpses.length && (
+                <div className="glimpse-fanned-card ghost-back" />
               )}
 
-              {/* Bottom Info Overlay */}
-              <div className="front-card-bottom-bar">
-                {/* Uploader Avatar & Name */}
-                <div className="front-card-uploader-info">
-                  {currentGlimpse.uploaderStudent?.profile_picture ? (
-                    <img src={currentGlimpse.uploaderStudent.profile_picture} alt={uploaderName} className="uploader-avatar-img" />
-                  ) : (
-                    <div className="uploader-avatar-initials">{uploaderInitials}</div>
-                  )}
-                  <span className="uploader-name-text">{uploaderName}</span>
-                </div>
+              {/* Background Ghost Card 1 (middle) */}
+              {currentIndex + 1 < glimpses.length && (
+                <div className="glimpse-fanned-card ghost-middle" />
+              )}
 
-                {/* Single-Select Reaction Panel */}
-                <div className="front-card-reaction-panel" onClick={(e) => e.stopPropagation()}>
-                  {[
-                    { type: 'love',  img: loveEmoji },
-                    { type: 'happy', img: happyEmoji },
-                    { type: 'sad',   img: sadEmoji },
-                    { type: 'wow',   img: wowEmoji },
-                    { type: 'angry', img: angryEmoji },
-                  ].map((item) => {
-                    const isActive = userReactions[currentGlimpse.id] === item.type;
-                    const count = currentGlimpse.reactionCounts?.[item.type] || 0;
+              {/* FRONT CARD (Interactive Swipeable) — image + caption only */}
+              <div ref={cardRef} className="glimpse-fanned-card front-card">
+                {/* Image */}
+                <img
+                  src={currentGlimpse.imageUrl}
+                  alt="Glimpse"
+                  className="front-card-img"
+                  draggable={false}
+                />
 
-                    return (
-                      <button
-                        key={item.type}
-                        className={`reaction-pill-btn ${isActive ? 'active' : ''}`}
-                        onClick={() => handleReaction(item.type)}
-                        title={item.type}
-                      >
-                        <img src={item.img} alt={item.type} className="reaction-emoji-img" />
-                        {count > 0 && <span className="pill-count-white">{count}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* Caption Overlay top-left */}
+                {currentGlimpse.caption && (
+                  <div className="front-card-caption-overlay bangla-caption-styled">
+                    {currentGlimpse.caption}
+                  </div>
+                )}
               </div>
+
             </div>
 
-            {/* Swipe Hint */}
-            <p className="swipe-instruction-hint">Swipe card left or right to burn & see next</p>
+            {/* ── Below-card: Uploader Info + Reaction Panel ── */}
+            <div className="glimpse-below-card-info">
+              {/* Uploader Avatar & Name */}
+              <div className="front-card-uploader-info">
+                {currentGlimpse.uploaderStudent?.profile_picture ? (
+                  <img src={currentGlimpse.uploaderStudent.profile_picture} alt={uploaderName} className="uploader-avatar-img" />
+                ) : (
+                  <div className="uploader-avatar-initials">{uploaderInitials}</div>
+                )}
+                <span className="uploader-name-text">{uploaderName}</span>
+              </div>
+
+              {/* Single-Select Reaction Panel */}
+              <div className="front-card-reaction-panel" onClick={(e) => e.stopPropagation()}>
+                {[
+                  { type: 'love',  img: loveEmoji },
+                  { type: 'happy', img: happyEmoji },
+                  { type: 'sad',   img: sadEmoji },
+                  { type: 'wow',   img: wowEmoji },
+                  { type: 'angry', img: angryEmoji },
+                ].map((item) => {
+                  const isActive = userReactions[currentGlimpse.id] === item.type;
+                  const count = currentGlimpse.reactionCounts?.[item.type] || 0;
+
+                  return (
+                    <button
+                      key={item.type}
+                      className={`reaction-pill-btn ${isActive ? 'active' : ''}`}
+                      onClick={() => handleReaction(item.type)}
+                      title={item.type}
+                    >
+                      <img src={item.img} alt={item.type} className="reaction-emoji-img" />
+                      {count > 0 && <span className="pill-count-white">{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
