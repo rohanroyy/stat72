@@ -26,6 +26,26 @@ function applySettingsToLocalStorage(settings) {
       JSON.stringify(settings.telegramCustomTopicNames)
     );
   }
+
+  if (settings.suggestionUploadFolder !== undefined) {
+    localStorage.setItem('bahattor_suggestion_upload_folder', settings.suggestionUploadFolder || '');
+  }
+
+  if (settings.googleServiceAccount !== undefined) {
+    localStorage.setItem('bahattor_google_service_account', settings.googleServiceAccount ? JSON.stringify(settings.googleServiceAccount) : '');
+  }
+
+  if (settings.googleRefreshToken !== undefined) {
+    localStorage.setItem('bahattor_google_refresh_token', settings.googleRefreshToken || '');
+  }
+
+  if (settings.googleClientId !== undefined) {
+    localStorage.setItem('bahattor_google_client_id', settings.googleClientId || '');
+  }
+
+  if (settings.googleClientSecret !== undefined) {
+    localStorage.setItem('bahattor_google_client_secret', settings.googleClientSecret || '');
+  }
 }
 
 export async function loadAppData() {
@@ -38,6 +58,11 @@ export async function loadAppData() {
     } catch {
       customNames = {};
     }
+    let serviceAccount = null;
+    try {
+      serviceAccount = JSON.parse(localStorage.getItem('bahattor_google_service_account') || 'null');
+    } catch {}
+
     return {
       exams: getExams(),
       folders: await fetchFolders(),
@@ -48,6 +73,11 @@ export async function loadAppData() {
           chatId: localStorage.getItem(STORAGE_CHAT_ID_KEY) || '',
         },
         telegramCustomTopicNames: customNames,
+        suggestionUploadFolder: localStorage.getItem('bahattor_suggestion_upload_folder') || '',
+        googleServiceAccount: serviceAccount,
+        googleRefreshToken: localStorage.getItem('bahattor_google_refresh_token') || '',
+        googleClientId: localStorage.getItem('bahattor_google_client_id') || '',
+        googleClientSecret: localStorage.getItem('bahattor_google_client_secret') || '',
       },
       useLocalOnly: true,
     };

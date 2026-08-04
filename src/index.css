@@ -6818,6 +6818,18 @@ a:focus-visible {
   background: var(--accent);
 }
 
+.sugg-upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 /* ── Drive Picker ─────────────────────────────────────────────── */
 
 .sugg-picker-body {

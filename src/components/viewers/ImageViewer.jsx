@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { IconZoomIn, IconZoomOut } from '../common/Icons';
 import { getViewUrl } from '../../services/driveService';
+import { getOrFetchCachedFile } from '../../services/fileCacheService';
 
 /**
  * Image Viewer with zoom (wheel + buttons) and pan (drag).
@@ -12,17 +13,39 @@ export default function ImageViewer({ file }) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const containerRef = useRef(null);
 
-  const imageUrl = file.url || getViewUrl(file.id, file.mimeType);
-
-  // Reset when file changes
+  // Reset and load when file changes
   useEffect(() => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
     setLoaded(false);
     setError(false);
-  }, [file.id]);
+    setImageUrl('');
+
+    let active = true;
+    async function loadImg() {
+      try {
+        const url = await getOrFetchCachedFile(file);
+        if (active) {
+          if (url) {
+            setImageUrl(url);
+          } else {
+            setImageUrl(file.url || getViewUrl(file.id, file.mimeType));
+          }
+        }
+      } catch (err) {
+        if (active) {
+          setImageUrl(file.url || getViewUrl(file.id, file.mimeType));
+        }
+      }
+    }
+    loadImg();
+    return () => {
+      active = false;
+    };
+  }, [file.id, file.url]);
 
   // Wheel zoom
   const handleWheel = useCallback((e) => {
@@ -136,18 +159,20 @@ export default function ImageViewer({ file }) {
         </div>
       )}
 
-      <img
-        src={imageUrl}
-        alt={file.name}
-        draggable={false}
-        onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-          display: loaded ? 'block' : 'none',
-          transition: isDragging ? 'none' : 'transform 200ms ease-out',
-        }}
-      />
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={file.name}
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          onError={() => setError(true)}
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+            display: loaded ? 'block' : 'none',
+            transition: isDragging ? 'none' : 'transform 200ms ease-out',
+          }}
+        />
+      )}
 
       {loaded && (
         <div className="image-controls">

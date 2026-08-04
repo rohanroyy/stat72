@@ -10,6 +10,7 @@ import {
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification, deleteBroadcastNotification } from '../../services/broadcastService';
 import { fetchTopperIds, saveTopperIds } from '../../services/suggestionService';
+import { startAdminGoogleAuth } from '../../services/driveService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -25,7 +26,16 @@ export default function AdminPage({
   onTelegramFoldersUpdated,
   examsList = [],
   onSaveExam,
-  onDeleteExam,
+  suggestionUploadFolder = '',
+  onSaveSuggestionUploadFolder,
+  googleServiceAccount = null,
+  onSaveGoogleServiceAccount,
+  googleRefreshToken = '',
+  onSaveGoogleRefreshToken,
+  googleClientId = '',
+  onSaveGoogleClientId,
+  googleClientSecret = '',
+  onSaveGoogleClientSecret,
 }) {
   const [folderName, setFolderName] = useState('');
   const [folderLink, setFolderLink] = useState('');
@@ -34,6 +44,21 @@ export default function AdminPage({
   // States
   const [newApiKey, setNewApiKey] = useState(apiKey);
   const [apiSaveStatus, setApiSaveStatus] = useState('');
+
+  const [newUploadFolder, setNewUploadFolder] = useState(suggestionUploadFolder);
+  const [uploadFolderSaveStatus, setUploadFolderSaveStatus] = useState('');
+  const [serviceAccountSaveStatus, setServiceAccountSaveStatus] = useState('');
+  const [newClientId, setNewClientId] = useState(googleClientId);
+  const [newClientSecret, setNewClientSecret] = useState(googleClientSecret);
+  const [oauthCredsSaveStatus, setOauthCredsSaveStatus] = useState('');
+
+  useEffect(() => {
+    setNewClientId(googleClientId);
+  }, [googleClientId]);
+
+  useEffect(() => {
+    setNewClientSecret(googleClientSecret);
+  }, [googleClientSecret]);
 
   const [newTgToken, setNewTgToken] = useState(telegramConfig?.token || '');
   const [newTgChatId, setNewTgChatId] = useState(telegramConfig?.chatId || '');
@@ -156,7 +181,11 @@ export default function AdminPage({
       'telegram_token_key',
       'telegram_chat_id_key',
       'telegram_custom_topic_names',
-      'telegram_synced_data'
+      'telegram_synced_data',
+      'bahattor_suggestion_upload_folder',
+      'bahattor_google_service_account',
+      'bahattor_google_client_id',
+      'bahattor_google_client_secret'
     ];
 
     keys.forEach(k => {
@@ -191,7 +220,11 @@ export default function AdminPage({
       'telegram_token_key',
       'telegram_chat_id_key',
       'telegram_custom_topic_names',
-      'telegram_synced_data'
+      'telegram_synced_data',
+      'bahattor_suggestion_upload_folder',
+      'bahattor_google_service_account',
+      'bahattor_google_client_id',
+      'bahattor_google_client_secret'
     ];
     let loadedCount = 0;
 
@@ -211,12 +244,37 @@ export default function AdminPage({
           setNewApiKey(localStorage.getItem('studydock_api_key') || '');
           setNewTgToken(localStorage.getItem('telegram_token_key') || '');
           setNewTgChatId(localStorage.getItem('telegram_chat_id_key') || '');
+          setNewUploadFolder(localStorage.getItem('bahattor_suggestion_upload_folder') || '');
           setTopicsMap(getTopicsMap());
           setCustomNames(getCustomTopicNames());
           try {
             const rawFolders = localStorage.getItem('studydock_configured_folders');
             if (rawFolders) {
               onSaveFolders(JSON.parse(rawFolders));
+            }
+          } catch (err) {}
+          try {
+            const rawServiceAccount = localStorage.getItem('bahattor_google_service_account');
+            if (rawServiceAccount) {
+              onSaveGoogleServiceAccount(JSON.parse(rawServiceAccount));
+            }
+          } catch (err) {}
+          try {
+            const rawRefreshToken = localStorage.getItem('bahattor_google_refresh_token');
+            if (rawRefreshToken) {
+              onSaveGoogleRefreshToken(rawRefreshToken);
+            }
+          } catch (err) {}
+          try {
+            const rawClientId = localStorage.getItem('bahattor_google_client_id');
+            if (rawClientId) {
+              onSaveGoogleClientId(rawClientId);
+            }
+          } catch (err) {}
+          try {
+            const rawClientSecret = localStorage.getItem('bahattor_google_client_secret');
+            if (rawClientSecret) {
+              onSaveGoogleClientSecret(rawClientSecret);
             }
           } catch (err) {}
           setBridgeReady(true);
@@ -319,6 +377,64 @@ export default function AdminPage({
       setTimeout(() => setApiSaveStatus(''), 4000);
     }
   };
+
+  const handleUploadFolderSubmit = async (e) => {
+    e.preventDefault();
+    const trimmed = newUploadFolder.trim();
+    try {
+      await onSaveSuggestionUploadFolder(trimmed);
+      syncToBridge('bahattor_suggestion_upload_folder', trimmed);
+      setUploadFolderSaveStatus('Saved to database!');
+      setTimeout(() => setUploadFolderSaveStatus(''), 2000);
+    } catch (err) {
+      setUploadFolderSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setUploadFolderSaveStatus(''), 4000);
+    }
+  };
+
+  const handleServiceAccountUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (parsed.type !== 'service_account' || !parsed.private_key || !parsed.client_email) {
+          alert('Invalid Google Service Account JSON. Please check the file.');
+          return;
+        }
+
+        setServiceAccountSaveStatus('Saving...');
+        await onSaveGoogleServiceAccount(parsed);
+        syncToBridge('bahattor_google_service_account', JSON.stringify(parsed));
+        setServiceAccountSaveStatus('Service Account configured successfully!');
+        setTimeout(() => setServiceAccountSaveStatus(''), 3000);
+      } catch (err) {
+        alert('Failed to parse JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveServiceAccount = async () => {
+    if (confirm('Are you sure you want to remove the Google Service Account? Toppers won\'t be able to upload suggestions without it.')) {
+      try {
+        setServiceAccountSaveStatus('Removing...');
+        await onSaveGoogleServiceAccount(null);
+        syncClearToBridge('bahattor_google_service_account');
+        setServiceAccountSaveStatus('Removed.');
+        setTimeout(() => setServiceAccountSaveStatus(''), 3000);
+      } catch (err) {
+        setServiceAccountSaveStatus('Error: ' + err.message);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setNewUploadFolder(suggestionUploadFolder);
+  }, [suggestionUploadFolder]);
 
   // ── Telegram Config ───────────────────────────────────────────────────────
   const handleTelegramSubmit = async (e) => {
@@ -761,6 +877,236 @@ export default function AdminPage({
             )}
           </div>
         </form>
+      </section>
+
+      {/* ── Suggestion Upload Folder Settings ─────────────────────────── */}
+      <section className="admin-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          Topper Suggestion Upload Settings
+        </h3>
+        <form onSubmit={handleUploadFolderSubmit} className="admin-form-grid">
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="upload-folder-input">Google Drive Upload Folder Link or ID</label>
+            <input
+              id="upload-folder-input"
+              className="admin-input"
+              type="text"
+              value={newUploadFolder}
+              onChange={(e) => setNewUploadFolder(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+              spellCheck="false"
+              autoComplete="off"
+            />
+            <p className="caption" style={{ color: 'var(--text-tertiary)', marginTop: '6px', lineHeight: '1.4' }}>
+              Files uploaded directly by toppers will be stored in this folder. Make sure the folder has public write permissions (anyone with the link can edit) so files can be uploaded without individual student Google accounts.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button type="submit" className="admin-btn">Save Upload Folder</button>
+            {uploadFolderSaveStatus && (
+              <span className="caption" style={{ color: uploadFolderSaveStatus.startsWith('Error:') ? 'var(--accent)' : 'var(--gold-600)' }}>
+                {uploadFolderSaveStatus}
+              </span>
+            )}
+          </div>
+        </form>
+      </section>
+
+      {/* ── Google Service Account Settings ───────────────────────────── */}
+      <section className="admin-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" />
+          </svg>
+          Google Service Account Settings
+        </h3>
+        <div className="admin-form-grid">
+          <div className="admin-form-group">
+            <label className="admin-label">Service Account JSON configuration</label>
+            {googleServiceAccount ? (
+              <div style={{ padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Project ID:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{googleServiceAccount.project_id}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Client Email:</span>
+                  <span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{googleServiceAccount.client_email}</span>
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleRemoveServiceAccount}
+                    className="admin-btn"
+                    style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '12px' }}
+                  >
+                    Remove Service Account
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleServiceAccountUpload}
+                  style={{ display: 'none' }}
+                  id="service-account-file"
+                />
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('service-account-file')?.click()}
+                  className="admin-btn"
+                >
+                  Upload Service Account JSON (.json)
+                </button>
+                <p className="caption" style={{ color: 'var(--text-tertiary)', marginTop: '8px', lineHeight: '1.4' }}>
+                  Upload a Google Cloud IAM Service Account JSON key. This allows toppers to upload files automatically without being prompted to log in to their personal Google account.
+                </p>
+              </div>
+            )}
+            {serviceAccountSaveStatus && (
+              <p className="caption" style={{ color: 'var(--gold-600)', marginTop: '8px' }}>
+                {serviceAccountSaveStatus}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Google Admin Account Authorization Settings ───────────────── */}
+      <section className="admin-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <path d="M17 11l2 2 4-4" />
+          </svg>
+          Google Admin Account Authorization (For Personal Drive Quota)
+        </h3>
+        <div className="admin-form-grid">
+          <div className="admin-form-group">
+            <p className="caption" style={{ color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.5' }}>
+              If you are using a personal Google Drive account (e.g., <code>@gmail.com</code>), Google Service Accounts cannot own files and have a 0-byte quota.
+              To fix this, authorize your admin Google Account below. Toppers will be able to upload suggestions silently, counting against your personal Google Drive storage space.
+            </p>
+            {googleRefreshToken ? (
+              <div style={{ padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--gold-600)', fontSize: '14px', fontWeight: '500' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Admin Google Drive Authorized (Personal Drive quota fallback active)
+                </div>
+                <div style={{ marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (confirm('De-authorize Google Drive? Toppers will lose access to upload files unless they are using a Shared Drive folder.')) {
+                        await onSaveGoogleRefreshToken('');
+                        syncClearToBridge('bahattor_google_refresh_token');
+                      }
+                    }}
+                    className="admin-btn"
+                    style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '12px' }}
+                  >
+                    De-authorize Account
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px', background: 'var(--bg-surface-2)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-hairline)' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '600' }}>Configure Google OAuth Credentials</h4>
+                  <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                    <label className="admin-label" htmlFor="oauth-client-id" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Google OAuth Client ID</label>
+                    <input
+                      id="oauth-client-id"
+                      className="admin-input"
+                      type="text"
+                      value={newClientId}
+                      onChange={(e) => setNewClientId(e.target.value)}
+                      placeholder="Enter OAuth Client ID"
+                      spellCheck="false"
+                      autoComplete="off"
+                      style={{ height: '36px', fontSize: '12.5px' }}
+                    />
+                  </div>
+                  <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                    <label className="admin-label" htmlFor="oauth-client-secret" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Google OAuth Client Secret</label>
+                    <input
+                      id="oauth-client-secret"
+                      className="admin-input"
+                      type="password"
+                      value={newClientSecret}
+                      onChange={(e) => setNewClientSecret(e.target.value)}
+                      placeholder="Enter OAuth Client Secret"
+                      spellCheck="false"
+                      autoComplete="off"
+                      style={{ height: '36px', fontSize: '12.5px' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}
+                      onClick={async () => {
+                        try {
+                          setOauthCredsSaveStatus('Saving...');
+                          await onSaveGoogleClientId(newClientId.trim());
+                          await onSaveGoogleClientSecret(newClientSecret.trim());
+                          syncToBridge('bahattor_google_client_id', newClientId.trim());
+                          syncToBridge('bahattor_google_client_secret', newClientSecret.trim());
+                          setOauthCredsSaveStatus('Saved!');
+                          setTimeout(() => setOauthCredsSaveStatus(''), 2000);
+                        } catch (err) {
+                          setOauthCredsSaveStatus(`Error: ${err.message}`);
+                        }
+                      }}
+                    >
+                      Save Credentials
+                    </button>
+                    {oauthCredsSaveStatus && (
+                      <span className="caption" style={{ color: oauthCredsSaveStatus.startsWith('Error') ? 'var(--accent)' : 'var(--gold-600)' }}>
+                        {oauthCredsSaveStatus}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={startAdminGoogleAuth}
+                  className="admin-btn"
+                  disabled={!googleClientId || !googleClientSecret}
+                  style={{ opacity: (!googleClientId || !googleClientSecret) ? 0.5 : 1 }}
+                >
+                  Authorize Admin Google Account
+                </button>
+                {!googleClientId || !googleClientSecret ? (
+                  <p className="caption" style={{ color: 'var(--accent)', marginTop: '8px' }}>
+                    * You must configure and save your Google Client ID & Client Secret above before authorizing.
+                  </p>
+                ) : null}
+
+                <div style={{ marginTop: '12px', padding: '10px', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '12px', lineHeight: '1.4' }}>
+                  <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Action Required in Google Cloud Console:</span>
+                  <p style={{ margin: '4px 0 8px 0', color: 'var(--text-tertiary)' }}>
+                    Google OAuth requires registering the exact redirect URL. Copy the URI below and paste it into the <strong>Authorized redirect URIs</strong> list under your OAuth 2.0 Web Client credentials in the Google Cloud Console:
+                  </p>
+                  <code style={{ background: 'var(--bg-primary)', padding: '4px 8px', borderRadius: '4px', color: 'var(--accent)', fontFamily: 'monospace', display: 'inline-block', userSelect: 'all' }}>
+                    {window.location.origin}
+                  </code>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ── Telegram Config ──────────────────────────────────────────── */}

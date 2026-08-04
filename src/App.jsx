@@ -19,12 +19,13 @@ import Register from './components/auth/Register';
 import Dashboard from './components/dashboard/Dashboard';
 import MaterialsPage from './components/materials/MaterialsPage';
 import ExplorePage from './components/explore/ExplorePage';
-import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey } from './config/drive';
+import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey, setRuntimeClientId, setRuntimeClientSecret } from './config/drive';
 import { getTelegramConfig, saveTelegramConfig, clearTelegramConfig } from './services/telegramService';
 import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage, subscribeToExams } from './services/examService';
 import { fetchTopperIds } from './services/suggestionService';
 import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
-import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings } from './services/settingsService';
+import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings, saveSuggestionUploadFolder, saveGoogleServiceAccount, saveGoogleRefreshToken, saveGoogleClientId, saveGoogleClientSecret } from './services/settingsService';
+import { setAccessToken, setServiceAccountConfig, setAdminRefreshToken, exchangeAuthCode } from './services/driveService';
 import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
@@ -67,10 +68,47 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
+    // Check for Google OAuth callback code in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    if (code) {
+      (async () => {
+        try {
+          const tokens = await exchangeAuthCode(code);
+          if (tokens.refresh_token) {
+            await saveGoogleRefreshToken(tokens.refresh_token);
+            setAdminRefreshToken(tokens.refresh_token);
+            alert('Google Drive admin authorization successful!');
+          } else {
+            alert('Warning: No refresh token returned. If re-authorizing, please remove the app access from your Google Account settings first.');
+          }
+        } catch (err) {
+          console.error('Failed to exchange auth code:', err);
+          alert('Failed to authorize Google Drive: ' + err.message);
+        } finally {
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.location.href = cleanUrl;
+        }
+      })();
+      return;
+    }
+
     loadAppData()
       .then((data) => {
         if (cancelled) return;
         setLocalApiKey(data.settings.googleApiKey || '');
+        if (data.settings.googleServiceAccount) {
+          setServiceAccountConfig(data.settings.googleServiceAccount);
+        }
+        if (data.settings.googleRefreshToken) {
+          setAdminRefreshToken(data.settings.googleRefreshToken);
+        }
+        if (data.settings.googleClientId) {
+          setRuntimeClientId(data.settings.googleClientId);
+        }
+        if (data.settings.googleClientSecret) {
+          setRuntimeClientSecret(data.settings.googleClientSecret);
+        }
         setBootState({ loading: false, error: null, data });
       })
       .catch((err) => {
@@ -277,6 +315,21 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   const [examsList, setExamsList] = useState(() => initialData?.exams || []);
   const [topperIds, setTopperIds] = useState([]);
+  const [suggestionUploadFolder, setSuggestionUploadFolder] = useState(() => {
+    return initialData?.settings?.suggestionUploadFolder || localStorage.getItem('bahattor_suggestion_upload_folder') || '';
+  });
+  const [googleServiceAccount, setGoogleServiceAccount] = useState(() => {
+    return initialData?.settings?.googleServiceAccount || null;
+  });
+  const [googleRefreshToken, setGoogleRefreshToken] = useState(() => {
+    return initialData?.settings?.googleRefreshToken || '';
+  });
+  const [googleClientId, setGoogleClientId] = useState(() => {
+    return initialData?.settings?.googleClientId || localStorage.getItem('bahattor_google_client_id') || '';
+  });
+  const [googleClientSecret, setGoogleClientSecret] = useState(() => {
+    return initialData?.settings?.googleClientSecret || localStorage.getItem('bahattor_google_client_secret') || '';
+  });
 
   // Load topper IDs on boot
   useEffect(() => {
@@ -375,6 +428,23 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         const settings = await fetchAppSettings();
         if (settings.telegram) setTgConfig(settings.telegram);
         if (settings.googleApiKey) setRuntimeApiKey(settings.googleApiKey);
+        if (settings.suggestionUploadFolder !== undefined) setSuggestionUploadFolder(settings.suggestionUploadFolder);
+        if (settings.googleServiceAccount !== undefined) {
+          setGoogleServiceAccount(settings.googleServiceAccount);
+          setServiceAccountConfig(settings.googleServiceAccount);
+        }
+        if (settings.googleRefreshToken !== undefined) {
+          setGoogleRefreshToken(settings.googleRefreshToken);
+          setAdminRefreshToken(settings.googleRefreshToken);
+        }
+        if (settings.googleClientId !== undefined) {
+          setGoogleClientId(settings.googleClientId);
+          setRuntimeClientId(settings.googleClientId);
+        }
+        if (settings.googleClientSecret !== undefined) {
+          setGoogleClientSecret(settings.googleClientSecret);
+          setRuntimeClientSecret(settings.googleClientSecret);
+        }
 
         const broadcasts = await fetchBroadcastNotifications();
         const rawStudent = localStorage.getItem('bahattor_logged_in_student');
@@ -613,6 +683,35 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     setTgRefreshKey(k => k + 1);
   };
 
+  const handleSaveSuggestionUploadFolder = async (folderLinkOrId) => {
+    await saveSuggestionUploadFolder(folderLinkOrId);
+    setSuggestionUploadFolder(folderLinkOrId);
+  };
+
+  const handleSaveGoogleServiceAccount = async (config) => {
+    await saveGoogleServiceAccount(config);
+    setGoogleServiceAccount(config);
+    setServiceAccountConfig(config);
+  };
+
+  const handleSaveGoogleRefreshToken = async (token) => {
+    await saveGoogleRefreshToken(token);
+    setGoogleRefreshToken(token);
+    setAdminRefreshToken(token);
+  };
+
+  const handleSaveGoogleClientId = async (id) => {
+    await saveGoogleClientId(id);
+    setGoogleClientId(id);
+    setRuntimeClientId(id);
+  };
+
+  const handleSaveGoogleClientSecret = async (secret) => {
+    await saveGoogleClientSecret(secret);
+    setGoogleClientSecret(secret);
+    setRuntimeClientSecret(secret);
+  };
+
   const [viewerFile, setViewerFile] = useState(null);
 
   const handleOpenFile = useCallback((file) => {
@@ -727,6 +826,16 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           examsList={examsList}
           onSaveExam={handleSaveExam}
           onDeleteExam={handleDeleteExam}
+          suggestionUploadFolder={suggestionUploadFolder}
+          onSaveSuggestionUploadFolder={handleSaveSuggestionUploadFolder}
+          googleServiceAccount={googleServiceAccount}
+          onSaveGoogleServiceAccount={handleSaveGoogleServiceAccount}
+          googleRefreshToken={googleRefreshToken}
+          onSaveGoogleRefreshToken={handleSaveGoogleRefreshToken}
+          googleClientId={googleClientId}
+          onSaveGoogleClientId={handleSaveGoogleClientId}
+          googleClientSecret={googleClientSecret}
+          onSaveGoogleClientSecret={handleSaveGoogleClientSecret}
           onClose={() => {
             // Remove admin search params and switch to calendar view without reload
             const url = new URL(window.location);
@@ -780,6 +889,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           topperIds={topperIds}
           foldersList={foldersList}
           onOpenFile={handleOpenFile}
+          suggestionUploadFolder={suggestionUploadFolder}
         />
       );
     }

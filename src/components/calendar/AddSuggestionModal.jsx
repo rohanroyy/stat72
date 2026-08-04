@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { listFolder } from '../../services/driveService';
-import { getApiKey } from '../../config/drive';
+import { listFolder, uploadFileToDrive } from '../../services/driveService';
+import { getApiKey, extractFolderId } from '../../config/drive';
 
 /**
  * AddSuggestionModal
@@ -9,10 +9,18 @@ import { getApiKey } from '../../config/drive';
  *   - open: boolean
  *   - editingSuggestion: suggestion object | null (null = add mode)
  *   - foldersList: configured root drive folders
+ *   - suggestionUploadFolder: string (Google Drive folder ID or link for uploads)
  *   - onSubmit({ text, attachment })
  *   - onClose()
  */
-export default function AddSuggestionModal({ open, editingSuggestion, foldersList = [], onSubmit, onClose }) {
+export default function AddSuggestionModal({
+  open,
+  editingSuggestion,
+  foldersList = [],
+  suggestionUploadFolder = '',
+  onSubmit,
+  onClose,
+}) {
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState(null); // { type, name, driveId, mimeType? }
 
@@ -24,7 +32,11 @@ export default function AddSuggestionModal({ open, editingSuggestion, foldersLis
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerError, setPickerError] = useState('');
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
   const textRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Prefill when editing
   useEffect(() => {
@@ -36,6 +48,8 @@ export default function AddSuggestionModal({ open, editingSuggestion, foldersLis
       setPickerFolders([]);
       setPickerFiles([]);
       setPickerError('');
+      setUploading(false);
+      setUploadError('');
     }
   }, [open, editingSuggestion]);
 
@@ -49,6 +63,52 @@ export default function AddSuggestionModal({ open, editingSuggestion, foldersLis
   // Close on backdrop click
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
+  };
+
+  const handleUploadButtonClick = () => {
+    setUploadError('');
+    const parentFolderId = extractFolderId(suggestionUploadFolder);
+    if (!parentFolderId) {
+      setUploadError('Admin has not configured an Upload Folder Link in Admin Panel.');
+      return;
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // ── Upload local file ────────────────────────────────────────────────────────
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const parentFolderId = extractFolderId(suggestionUploadFolder);
+    if (!parentFolderId) {
+      setUploadError('Admin has not configured an Upload Folder Link in Admin Panel.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      const apiKey = getApiKey();
+      const result = await uploadFileToDrive(file, file.name, parentFolderId, apiKey);
+      setAttachment({
+        type: 'file',
+        name: result.name,
+        driveId: result.id,
+        mimeType: result.mimeType || file.type,
+      });
+    } catch (err) {
+      console.error(err);
+      setUploadError(err.message || 'File upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // ── Drive picker ────────────────────────────────────────────────────────────
@@ -157,7 +217,7 @@ export default function AddSuggestionModal({ open, editingSuggestion, foldersLis
               rows={4}
             />
 
-            {/* Attachment preview */}
+            {/* Attachment section */}
             {attachment ? (
               <div className="sugg-attachment-preview">
                 <span className="sugg-attachment-preview-icon">
@@ -185,17 +245,52 @@ export default function AddSuggestionModal({ open, editingSuggestion, foldersLis
                   </svg>
                 </button>
               </div>
+            ) : uploading ? (
+              <div className="sugg-upload-progress">
+                <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
+                <span>Uploading file to Drive...</span>
+              </div>
             ) : (
-              <button
-                type="button"
-                className="sugg-pick-drive-btn"
-                onClick={openPickerRoot}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                Attach from Drive
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="sugg-pick-drive-btn"
+                    onClick={openPickerRoot}
+                    style={{ flex: 1 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Choose from Drive
+                  </button>
+
+                  <button
+                    type="button"
+                    className="sugg-pick-drive-btn"
+                    onClick={handleUploadButtonClick}
+                    style={{ flex: 1 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload Device File
+                  </button>
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                {uploadError && (
+                  <div style={{ color: 'var(--accent)', fontSize: '12px', padding: '2px 4px' }}>
+                    {uploadError}
+                  </div>
+                )}
+              </div>
             )}
 
             <div className="sugg-modal-actions">

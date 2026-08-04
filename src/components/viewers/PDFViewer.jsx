@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { IconChevronLeft, IconChevronRight, IconZoomIn, IconZoomOut } from '../common/Icons';
 import { getViewUrl } from '../../services/driveService';
+import { getOrFetchCachedFile } from '../../services/fileCacheService';
 
 /**
  * PDF Viewer using PDF.js (loaded via CDN in index.html)
@@ -34,7 +35,11 @@ export default function PDFViewer({ file }) {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
-        const url = file.url || getViewUrl(file.id, file.mimeType);
+        let url = await getOrFetchCachedFile(file);
+        if (!url) {
+          console.warn('[PDFViewer] Cache load failed, using direct Drive URL');
+          url = file.url || getViewUrl(file.id, file.mimeType);
+        }
 
         const loadingTask = pdfjsLib.getDocument({
           url,

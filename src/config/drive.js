@@ -50,3 +50,39 @@ export function getApiKey() {
 export const API_KEY = getApiKey();
 export const POLL_INTERVAL = 30_000;
 export const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+
+// Google OAuth 2.0 Client ID
+export const DEFAULT_CLIENT_ID = '669390946434-kcb875brk537omcfusecuvsfn80gr6l6.apps.googleusercontent.com';
+
+let runtimeClientId = '';
+let runtimeClientSecret = '';
+
+export function setRuntimeClientId(id) {
+  runtimeClientId = id || '';
+}
+
+export function setRuntimeClientSecret(secret) {
+  runtimeClientSecret = secret || '';
+}
+
+export function getClientId() {
+  if (runtimeClientId) return runtimeClientId;
+  const envId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (envId) return envId;
+  try {
+    return localStorage.getItem('bahattor_google_client_id') || DEFAULT_CLIENT_ID;
+  } catch {
+    return DEFAULT_CLIENT_ID;
+  }
+}
+
+export function getClientSecret() {
+  if (runtimeClientSecret) return runtimeClientSecret;
+  const envSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+  if (envSecret) return envSecret;
+  try {
+    return localStorage.getItem('bahattor_google_client_secret') || '';
+  } catch {
+    return '';
+  }
+}

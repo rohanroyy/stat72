@@ -4,6 +4,11 @@ const SETTINGS_KEYS = {
   GOOGLE_API_KEY: 'google_api_key',
   TELEGRAM: 'telegram',
   TELEGRAM_CUSTOM_TOPIC_NAMES: 'telegram_custom_topic_names',
+  SUGGESTION_UPLOAD_FOLDER: 'suggestion_upload_folder',
+  GOOGLE_SERVICE_ACCOUNT: 'google_service_account',
+  GOOGLE_REFRESH_TOKEN: 'google_refresh_token',
+  GOOGLE_CLIENT_ID: 'google_client_id',
+  GOOGLE_CLIENT_SECRET: 'google_client_secret',
 };
 
 function rowToValue(row) {
@@ -51,6 +56,11 @@ export async function fetchAppSettings() {
       googleApiKey: '',
       telegram: { token: '', chatId: '' },
       telegramCustomTopicNames: {},
+      suggestionUploadFolder: '',
+      googleServiceAccount: null,
+      googleRefreshToken: '',
+      googleClientId: '',
+      googleClientSecret: '',
     };
   }
 
@@ -63,6 +73,11 @@ export async function fetchAppSettings() {
     googleApiKey: map[SETTINGS_KEYS.GOOGLE_API_KEY] || '',
     telegram: map[SETTINGS_KEYS.TELEGRAM] || { token: '', chatId: '' },
     telegramCustomTopicNames: map[SETTINGS_KEYS.TELEGRAM_CUSTOM_TOPIC_NAMES] || {},
+    suggestionUploadFolder: map[SETTINGS_KEYS.SUGGESTION_UPLOAD_FOLDER] || '',
+    googleServiceAccount: map[SETTINGS_KEYS.GOOGLE_SERVICE_ACCOUNT] || null,
+    googleRefreshToken: map[SETTINGS_KEYS.GOOGLE_REFRESH_TOKEN] || '',
+    googleClientId: map[SETTINGS_KEYS.GOOGLE_CLIENT_ID] || '',
+    googleClientSecret: map[SETTINGS_KEYS.GOOGLE_CLIENT_SECRET] || '',
   };
 }
 
@@ -72,6 +87,26 @@ export async function saveGoogleApiKey(key) {
 
 export async function saveTelegramSettings(token, chatId) {
   await saveSetting(SETTINGS_KEYS.TELEGRAM, { token, chatId });
+}
+
+export async function saveSuggestionUploadFolder(folderLinkOrId) {
+  await saveSetting(SETTINGS_KEYS.SUGGESTION_UPLOAD_FOLDER, folderLinkOrId);
+}
+
+export async function saveGoogleServiceAccount(configJson) {
+  await saveSetting(SETTINGS_KEYS.GOOGLE_SERVICE_ACCOUNT, configJson);
+}
+
+export async function saveGoogleRefreshToken(token) {
+  await saveSetting(SETTINGS_KEYS.GOOGLE_REFRESH_TOKEN, token);
+}
+
+export async function saveGoogleClientId(clientId) {
+  await saveSetting(SETTINGS_KEYS.GOOGLE_CLIENT_ID, clientId);
+}
+
+export async function saveGoogleClientSecret(clientSecret) {
+  await saveSetting(SETTINGS_KEYS.GOOGLE_CLIENT_SECRET, clientSecret);
 }
 
 export async function clearTelegramSettings() {
@@ -95,6 +130,13 @@ export async function migrateSettingsFromLocalStorage() {
   const apiKey = localStorage.getItem('studydock_api_key') || '';
   const token = localStorage.getItem('studydock_telegram_token') || '';
   const chatId = localStorage.getItem('studydock_telegram_chat_id') || '';
+  const suggestionUploadFolder = localStorage.getItem('bahattor_suggestion_upload_folder') || '';
+  const googleClientId = localStorage.getItem('bahattor_google_client_id') || '';
+  const googleClientSecret = localStorage.getItem('bahattor_google_client_secret') || '';
+  let serviceAccount = null;
+  try {
+    serviceAccount = JSON.parse(localStorage.getItem('bahattor_google_service_account') || 'null');
+  } catch {}
 
   let customNames = {};
   try {
@@ -108,6 +150,18 @@ export async function migrateSettingsFromLocalStorage() {
   if (token || chatId) upserts.push({ key: SETTINGS_KEYS.TELEGRAM, value: { token, chatId } });
   if (Object.keys(customNames).length) {
     upserts.push({ key: SETTINGS_KEYS.TELEGRAM_CUSTOM_TOPIC_NAMES, value: customNames });
+  }
+  if (suggestionUploadFolder) {
+    upserts.push({ key: SETTINGS_KEYS.SUGGESTION_UPLOAD_FOLDER, value: suggestionUploadFolder });
+  }
+  if (serviceAccount) {
+    upserts.push({ key: SETTINGS_KEYS.GOOGLE_SERVICE_ACCOUNT, value: serviceAccount });
+  }
+  if (googleClientId) {
+    upserts.push({ key: SETTINGS_KEYS.GOOGLE_CLIENT_ID, value: googleClientId });
+  }
+  if (googleClientSecret) {
+    upserts.push({ key: SETTINGS_KEYS.GOOGLE_CLIENT_SECRET, value: googleClientSecret });
   }
 
   if (!upserts.length) return;

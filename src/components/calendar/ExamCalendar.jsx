@@ -83,6 +83,7 @@ export default function ExamCalendar({
   topperIds = [],
   foldersList = [],
   onOpenFile = null,
+  suggestionUploadFolder = '',
 }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
@@ -391,6 +392,7 @@ export default function ExamCalendar({
           topperIds={topperIds}
           foldersList={foldersList}
           onOpenFile={onOpenFile}
+          suggestionUploadFolder={suggestionUploadFolder}
           onClose={handleCloseDetail}
         />
       )}

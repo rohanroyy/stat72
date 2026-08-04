@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SuggestionCard from './SuggestionCard';
 import AddSuggestionModal from './AddSuggestionModal';
 import SuggestionFolderViewer from './SuggestionFolderViewer';
@@ -34,7 +34,7 @@ function formatExamDate(dateStr) {
  *   - foldersList: configured root drive folders for picker
  *   - onClose()
  */
-export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, onClose }) {
+export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, suggestionUploadFolder = '', onClose }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,21 +70,32 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
     return unsub;
   }, [exam?.id, loadSuggestions]);
 
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // ── Browser back support ─────────────────────────────────────────────────────
   useEffect(() => {
     // Push a new history entry so browser back / device back closes the panel
     window.history.pushState({ examPanel: true, examId: exam?.id }, '');
 
     const onPopState = (e) => {
-      if (!e.state?.examPanel) {
-        onClose();
+      // Close only if we pop to a state outside the exam detail hierarchy
+      const isExamSubState = e.state && (
+        e.state.examPanel || 
+        e.state.suggFolderViewer || 
+        e.state.viewerOpen
+      );
+      if (!isExamSubState) {
+        onCloseRef.current();
       }
     };
     window.addEventListener('popstate', onPopState);
     return () => {
       window.removeEventListener('popstate', onPopState);
     };
-  }, [exam?.id, onClose]);
+  }, [exam?.id]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleBack = () => {
@@ -279,6 +290,7 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         open={modalOpen}
         editingSuggestion={editingSuggestion}
         foldersList={foldersList}
+        suggestionUploadFolder={suggestionUploadFolder}
         onSubmit={handleModalSubmit}
         onClose={() => { setModalOpen(false); setEditingSuggestion(null); }}
       />

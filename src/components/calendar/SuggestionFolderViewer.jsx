@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useDriveFolder } from '../../hooks/useDriveFolder';
 import FileManager from '../filemanager/FileManager';
 import { getApiKey } from '../../config/drive';
@@ -29,18 +29,24 @@ export default function SuggestionFolderViewer({ folder, onOpenFile, onClose }) 
     refresh,
   } = useDriveFolder(folder.driveId, folder.name, apiKey);
 
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // Push a history entry so browser/device back closes this viewer
   useEffect(() => {
     window.history.pushState({ suggFolderViewer: true, folderId: folder.driveId }, '');
 
     const onPopState = (e) => {
-      if (!e.state?.suggFolderViewer) {
-        onClose();
+      // Close only if we pop to a state that doesn't have folder viewer or file viewer open
+      if (!e.state?.suggFolderViewer && !e.state?.viewerOpen) {
+        onCloseRef.current();
       }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [folder.driveId, onClose]);
+  }, [folder.driveId]);
 
   const handleBack = () => {
     // Go back in history (fires popstate → onClose)
