@@ -104,6 +104,25 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
       <div className="setup-card glassmorphic-auth">
         <h2>Student Login</h2>
 
+        {!isSupabaseConfigured() && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#ef4444',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '12.5px',
+            marginBottom: '16px',
+            lineHeight: '1.5',
+            textAlign: 'center'
+          }}>
+            <strong>⚠️ Running in Offline Mode</strong>
+            <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+              Supabase environment variables (<code>VITE_SUPABASE_URL</code> & <code>VITE_SUPABASE_ANON_KEY</code>) are missing in Vercel settings.
+            </p>
+          </div>
+        )}
+
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
