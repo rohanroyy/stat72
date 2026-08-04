@@ -9,7 +9,6 @@ import ViewerModal from './components/viewers/ViewerModal';
 import PDFViewer from './components/viewers/PDFViewer';
 import ImageViewer from './components/viewers/ImageViewer';
 import VideoViewer from './components/viewers/VideoViewer';
-import ApiKeySetup from './components/setup/ApiKeySetup';
 import TelegramSetup from './components/telegram/TelegramSetup';
 import TelegramManager from './components/telegram/TelegramManager';
 import ExamCalendar from './components/calendar/ExamCalendar';
@@ -171,11 +170,6 @@ export default function App() {
   }
 
   const effectiveApiKey = import.meta.env.VITE_GOOGLE_API_KEY || localApiKey;
-  const hasApiKey = !!effectiveApiKey;
-
-  if (!hasApiKey) {
-    return <ApiKeySetup onKeySubmit={handleApiKeySubmit} />;
-  }
 
   return (
     <AppMain

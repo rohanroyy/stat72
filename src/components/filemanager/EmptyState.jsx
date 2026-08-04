@@ -24,7 +24,12 @@ export function EmptyState({ filter = 'all' }) {
 }
 
 export function ErrorState({ error, onRetry }) {
-  const isApiKeyError = error === 'NO_API_KEY';
+  const isApiKeyError = error === 'NO_API_KEY' || 
+                        (error && error.includes('API configuration is missing')) || 
+                        (error && error.includes('API credentials are missing')) ||
+                        (error && error.includes('API key or OAuth token required'));
+
+  const isAdmin = window.location.search.includes('admin=true') || window.location.search.includes('page=admin');
 
   return (
     <div className="error-state">
@@ -33,11 +38,13 @@ export function ErrorState({ error, onRetry }) {
           <IconAlertCircle size={24} />
         </div>
         <div className="error-title">
-          {isApiKeyError ? 'API Key Required' : 'Unable to load files'}
+          {isApiKeyError ? 'Google Drive Not Configured' : 'Unable to load files'}
         </div>
         <div className="error-message">
           {isApiKeyError
-            ? 'Please configure your Google Drive API key to browse files.'
+            ? (isAdmin
+                ? 'Please configure your Google Drive API key or Service Account in the settings below.'
+                : 'Google Drive integration has not been configured by the admin yet. Please use other tabs or contact your admin.')
             : error
           }
         </div>
