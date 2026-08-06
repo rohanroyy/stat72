@@ -195,10 +195,25 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   });
 
   // Active Navigation Tab: 'dashboard' | 'calendar' | 'materials' | 'explore' | 'announcement'
+  // Short deep-link params: ?e=EXAM_ID&s=SUGG_ID (tab=calendar is inferred when e= present)
   const [activeTab, setActiveTab] = useState(() => {
-    // Also try reading from the current URL state if available
+    const sp = new URLSearchParams(window.location.search);
+    // If exam deep-link param present, always open calendar tab
+    if (sp.get('e')) return 'calendar';
+    const tabParam = sp.get('tab');
+    if (tabParam) return tabParam;
     const historyTab = window.history.state?.tab;
     return historyTab || localStorage.getItem('studydock_active_tab') || 'dashboard';
+  });
+
+  // Deep-link: which exam to auto-open and which suggestion to highlight
+  const [deepLinkExamId] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get('e') || sp.get('exam') || null; // support both short and legacy
+  });
+  const [deepLinkSuggId] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get('s') || sp.get('sugg') || null;
   });
 
   // Sync tab changes with browser history so back/forward gesture works
@@ -890,6 +905,8 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           foldersList={foldersList}
           onOpenFile={handleOpenFile}
           suggestionUploadFolder={suggestionUploadFolder}
+          initialExamId={deepLinkExamId}
+          highlightSuggId={deepLinkSuggId}
         />
       );
     }

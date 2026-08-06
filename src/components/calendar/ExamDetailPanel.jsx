@@ -34,7 +34,7 @@ function formatExamDate(dateStr) {
  *   - foldersList: configured root drive folders for picker
  *   - onClose()
  */
-export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, suggestionUploadFolder = '', onClose }) {
+export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, suggestionUploadFolder = '', highlightSuggId = null, onClose }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -117,14 +117,14 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
     setDeleteConfirm(suggestion);
   };
 
-  const handleModalSubmit = async ({ text, attachment }) => {
+  const handleModalSubmit = async ({ text, attachments }) => {
     if (!currentUser) return;
     try {
       let updated;
       if (editingSuggestion) {
-        updated = await editSuggestion(exam.id, editingSuggestion.id, { text, attachment });
+        updated = await editSuggestion(exam.id, editingSuggestion.id, { text, attachments });
       } else {
-        updated = await addSuggestion(exam.id, { text, attachment }, currentUser);
+        updated = await addSuggestion(exam.id, { text, attachments }, currentUser);
       }
       setSuggestions(updated);
     } catch (err) {
@@ -273,7 +273,9 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
                   <SuggestionCard
                     key={sugg.id}
                     suggestion={sugg}
+                    examId={exam.id}
                     currentUserId={currentUser?.id}
+                    isHighlighted={sugg.id === highlightSuggId}
                     onEdit={handleEditClick}
                     onDelete={handleDeleteClick}
                     onAttachmentClick={handleAttachmentClick}

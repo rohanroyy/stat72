@@ -6507,11 +6507,19 @@ a:focus-visible {
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
-  transition: border-color 0.15s ease;
+  /* Smooth transitions so removing the highlight class fades gracefully */
+  transition: border-color 1.2s ease, box-shadow 1.2s ease, background 1.2s ease;
 }
 
 .suggestion-card-body {
   margin-bottom: 10px;
+}
+
+.suggestion-attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .suggestion-text {
@@ -6653,6 +6661,62 @@ a:focus-visible {
   max-height: 90dvh;
   animation: sugg-sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
   overflow: hidden;
+  position: relative;
+}
+
+/* Upload progress bar indeterminate slide animation */
+@keyframes sugg-progress-indeterminate {
+  0%   { transform: translateX(-100%); width: 40%; }
+  50%  { width: 60%; }
+  100% { transform: translateX(260%); width: 40%; }
+}
+
+/* Suggestion card highlight animation.
+ * The class itself holds the highlighted visual state (border + glow).
+ * The keyframe only fires the initial ring-burst pulse.
+ * When JS removes the class after ~2.8 s, the transitions defined
+ * on .suggestion-card cause border-color / box-shadow / background
+ * to fade back to normal over 1.2 s — giving a smooth fade-out. */
+@keyframes sugg-highlight-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(232, 71, 43, 0.55), 0 0 0 3px rgba(232, 71, 43, 0.12); }
+  55%  { box-shadow: 0 0 0 14px rgba(232, 71, 43, 0), 0 0 0 3px rgba(232, 71, 43, 0.12); }
+  100% { box-shadow: 0 0 0 0 rgba(232, 71, 43, 0), 0 0 0 3px rgba(232, 71, 43, 0.12); }
+}
+
+.suggestion-card--highlighted {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(232, 71, 43, 0.12);
+  background: rgba(232, 71, 43, 0.04);
+  animation: sugg-highlight-ring 1.2s ease forwards;
+  /* Disable transitions while highlighted so the ring plays cleanly.
+   * They re-enable when the class is removed, powering the fade-back. */
+  transition: none !important;
+}
+
+/* Copy link button on suggestion cards */
+.suggestion-copy-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.suggestion-copy-link-btn:hover {
+  background: var(--bg-surface-2);
+  color: var(--accent);
+}
+
+/* Copied tooltip flash */
+.suggestion-copy-link-btn.copied {
+  color: var(--gold-600);
 }
 
 @keyframes sugg-sheet-up {

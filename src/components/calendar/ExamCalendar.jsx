@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ExamDetailPanel from './ExamDetailPanel';
 
 const DOW_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -84,6 +84,8 @@ export default function ExamCalendar({
   foldersList = [],
   onOpenFile = null,
   suggestionUploadFolder = '',
+  initialExamId = null,
+  highlightSuggId = null,
 }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
@@ -92,10 +94,31 @@ export default function ExamCalendar({
   const [selectedDate, setSelectedDate] = useState(today);
   const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
   const [selectedExam, setSelectedExam] = useState(null); // exam detail panel
+  // Track which suggestion to highlight — only active on deep-link arrival;
+  // cleared when user manually opens a different exam so re-opens don't re-highlight
+  const [activeHighlightSuggId, setActiveHighlightSuggId] = useState(highlightSuggId);
 
   // Use prop directly — parent (AppMain) owns the source of truth
   const exams = examsProp;
   const examDates = new Set(exams.map(e => e.date));
+
+  // Deep-link: auto-open the exam panel once exams are loaded
+  const deepLinkHandled = React.useRef(false);
+  useEffect(() => {
+    if (!initialExamId || deepLinkHandled.current || exams.length === 0) return;
+    const target = exams.find(e => e.id === initialExamId);
+    if (!target) return;
+    deepLinkHandled.current = true;
+    // Navigate calendar view to that exam's date
+    const parts = target.date.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      setSelectedDate(d);
+      setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+      setViewMode('week');
+    }
+    setSelectedExam(target);
+  }, [initialExamId, exams]);
 
   const selectedDateStr = toDateStr(selectedDate);
   const todayStr = toDateStr(today);
@@ -141,6 +164,12 @@ export default function ExamCalendar({
   };
 
   const handleExamCardClick = (exam) => {
+    // Sync URL before ExamDetailPanel mounts (avoids effects ordering issue)
+    const url = new URL(window.location.href);
+    url.searchParams.set('e', exam.id);
+    url.searchParams.delete('s'); // no suggestion highlight on manual open
+    window.history.replaceState({ tab: 'calendar', examId: exam.id }, '', url.toString());
+    setActiveHighlightSuggId(null); // don't highlight on manual open
     setSelectedExam(exam);
   };
 
@@ -153,11 +182,21 @@ export default function ExamCalendar({
       setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
       setViewMode('week');
     }
+    // Sync URL before ExamDetailPanel mounts
+    const url = new URL(window.location.href);
+    url.searchParams.set('e', exam.id);
+    url.searchParams.delete('s');
+    window.history.replaceState({ tab: 'calendar', examId: exam.id }, '', url.toString());
+    setActiveHighlightSuggId(null);
     setSelectedExam(exam);
   };
 
   const handleCloseDetail = () => {
     setSelectedExam(null);
+    // Clean deep-link params from URL so closing is reflected in address bar
+    const url = new URL(window.location.href);
+    ['e', 's', 'exam', 'sugg', 'tab'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({ tab: 'calendar' }, '', url.toString());
   };
 
   return (
@@ -393,6 +432,7 @@ export default function ExamCalendar({
           foldersList={foldersList}
           onOpenFile={onOpenFile}
           suggestionUploadFolder={suggestionUploadFolder}
+          highlightSuggId={activeHighlightSuggId}
           onClose={handleCloseDetail}
         />
       )}

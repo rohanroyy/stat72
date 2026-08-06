@@ -417,75 +417,92 @@ async function getOAuthTokenForUpload() {
 /**
  * Uploads a file (Blob/File object) to a specific Google Drive folder.
  * IMPORTANT: This always uses the admin OAuth token (refresh token flow).
- * Service accounts do NOT have storage quota and cannot upload to regular
- * Drive folders — they only work with Shared/Team Drives.
+ * Uses XHR for real upload progress — no base64 encoding (raw binary multipart).
+ *
+ * @param {File|Blob} fileBlob
+ * @param {string} fileName
+ * @param {string} parentFolderId
+ * @param {function(number):void} [onProgress] — called with 0-100 percent
  */
-export async function uploadFileToDrive(fileBlob, fileName, parentFolderId) {
+export async function uploadFileToDrive(fileBlob, fileName, parentFolderId, onProgress) {
   // Always use OAuth for uploads — service accounts lack storage quota
   const token = await getOAuthTokenForUpload();
 
-  const metadata = {
+  const metadata = JSON.stringify({
     name: fileName,
-    parents: [parentFolderId]
-  };
-
-  const boundary = 'bahattor_upload_boundary';
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const closeDelimiter = `\r\n--${boundary}--`;
-
-  // Read file as base64
-  const reader = new FileReader();
-  const base64Promise = new Promise((resolve, reject) => {
-    reader.onload = () => {
-      const result = reader.result;
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(fileBlob);
+    parents: [parentFolderId],
   });
 
-  const base64Data = await base64Promise;
+  // Build a true multipart/related body using Blob concatenation
+  // This avoids base64 (~33% size inflation) and is processed faster
+  const boundary = 'bahattor_boundary_' + Date.now();
+  const CRLF = '\r\n';
 
-  const body =
-    delimiter +
-    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-    JSON.stringify(metadata) +
-    delimiter +
-    'Content-Type: ' + (fileBlob.type || 'application/octet-stream') + '\r\n' +
-    'Content-Transfer-Encoding: base64\r\n\r\n' +
-    base64Data +
-    closeDelimiter;
+  const metaPart = [
+    '--' + boundary + CRLF,
+    'Content-Type: application/json; charset=UTF-8' + CRLF + CRLF,
+    metadata + CRLF,
+  ].join('');
+
+  const filePart = [
+    '--' + boundary + CRLF,
+    'Content-Type: ' + (fileBlob.type || 'application/octet-stream') + CRLF + CRLF,
+  ].join('');
+
+  const closePart = CRLF + '--' + boundary + '--';
+
+  const body = new Blob([
+    metaPart,
+    filePart,
+    fileBlob,
+    closePart,
+  ], { type: `multipart/related; boundary=${boundary}` });
 
   const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
-  const headers = {
-    'Content-Type': `multipart/related; boundary=${boundary}`,
-    'Authorization': `Bearer ${token}`,
-  };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body,
-  });
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('Content-Type', `multipart/related; boundary=${boundary}`);
 
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    const message = errData?.error?.message || `Upload failed: HTTP ${response.status}`;
-    // Provide a clearer message for quota/service-account errors
-    if (message.toLowerCase().includes('storage quota') || message.toLowerCase().includes('service account')) {
-      throw new Error(
-        'Upload failed: Admin OAuth authorization is required. ' +
-        'Please ask your admin to connect their Google account in the Admin Panel.'
-      );
+    if (onProgress && xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
     }
-    throw new Error(message);
-  }
 
-  const data = await response.json();
-  return {
-    id: data.id,
-    name: data.name,
-    mimeType: data.mimeType || fileBlob.type,
-  };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (onProgress) onProgress(100);
+          resolve({
+            id: data.id,
+            name: data.name,
+            mimeType: data.mimeType || fileBlob.type,
+          });
+        } catch (e) {
+          reject(new Error('Failed to parse upload response'));
+        }
+      } else {
+        let message = `Upload failed: HTTP ${xhr.status}`;
+        try {
+          const errData = JSON.parse(xhr.responseText);
+          message = errData?.error?.message || message;
+        } catch (_) {}
+        if (message.toLowerCase().includes('storage quota') || message.toLowerCase().includes('service account')) {
+          message = 'Upload failed: Admin OAuth authorization is required. Please ask your admin to connect their Google account in the Admin Panel.';
+        }
+        reject(new Error(message));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new Error('Upload was aborted'));
+
+    xhr.send(body);
+  });
 }

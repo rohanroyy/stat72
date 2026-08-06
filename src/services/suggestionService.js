@@ -68,14 +68,14 @@ export async function fetchSuggestions(examId) {
   }
 }
 
-export async function addSuggestion(examId, { text, attachment }, uploader) {
+export async function addSuggestion(examId, { text, attachments }, uploader) {
   const newSugg = {
     id: `sugg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     exam_id: examId,
     uploader_id: uploader.id,
     uploader_name: uploader.name,
     text: text || null,
-    attachment: attachment || null,
+    attachment: Array.isArray(attachments) ? attachments : [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -101,12 +101,13 @@ export async function addSuggestion(examId, { text, attachment }, uploader) {
   }
 }
 
-export async function editSuggestion(examId, suggId, { text, attachment }) {
+export async function editSuggestion(examId, suggId, { text, attachments }) {
   const updated_at = new Date().toISOString();
+  const attachmentValue = Array.isArray(attachments) ? attachments : [];
 
   if (!isSupabaseConfigured()) {
     const list = readLocalSuggestions(examId).map(s =>
-      s.id === suggId ? { ...s, text: text || null, attachment: attachment || null, updated_at } : s
+      s.id === suggId ? { ...s, text: text || null, attachment: attachmentValue, updated_at } : s
     );
     writeLocalSuggestions(examId, list);
     return list;
@@ -115,14 +116,14 @@ export async function editSuggestion(examId, suggId, { text, attachment }) {
   try {
     const { error } = await supabase
       .from('exam_suggestions')
-      .update({ text: text || null, attachment: attachment || null, updated_at })
+      .update({ text: text || null, attachment: attachmentValue, updated_at })
       .eq('id', suggId);
     if (error) throw new Error(error.message);
     return fetchSuggestions(examId);
   } catch (err) {
     console.error('editSuggestion DB error, using local fallback:', err.message);
     const list = readLocalSuggestions(examId).map(s =>
-      s.id === suggId ? { ...s, text: text || null, attachment: attachment || null, updated_at } : s
+      s.id === suggId ? { ...s, text: text || null, attachment: attachmentValue, updated_at } : s
     );
     writeLocalSuggestions(examId, list);
     return list;
