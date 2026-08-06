@@ -9,7 +9,7 @@ import {
   deleteSuggestion,
   subscribeToSuggestions,
 } from '../../services/suggestionService';
-import { getFileType } from '../../services/driveService';
+import { getFileType, deleteFileFromDrive } from '../../services/driveService';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -83,8 +83,8 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
     const onPopState = (e) => {
       // Close only if we pop to a state outside the exam detail hierarchy
       const isExamSubState = e.state && (
-        e.state.examPanel || 
-        e.state.suggFolderViewer || 
+        e.state.examPanel ||
+        e.state.suggFolderViewer ||
         e.state.viewerOpen
       );
       if (!isExamSubState) {
@@ -138,6 +138,23 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     try {
+      // Collect attachments that were uploaded from device (uploaded: true)
+      // These files live in the admin's Drive upload folder and should be cleaned up.
+      // Drive-picker selections are NOT deleted — they belong to the user's existing Drive.
+      const attachmentList = Array.isArray(deleteConfirm.attachment)
+        ? deleteConfirm.attachment
+        : deleteConfirm.attachment
+          ? [deleteConfirm.attachment]
+          : [];
+      const uploadedFiles = attachmentList.filter(a => a?.uploaded && a?.driveId);
+
+      // Delete uploaded files from Drive in parallel (best-effort; don't block on failure)
+      if (uploadedFiles.length > 0) {
+        await Promise.allSettled(
+          uploadedFiles.map(a => deleteFileFromDrive(a.driveId))
+        );
+      }
+
       const updated = await deleteSuggestion(exam.id, deleteConfirm.id);
       setSuggestions(updated);
     } catch (err) {
@@ -297,18 +314,35 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         onClose={() => { setModalOpen(false); setEditingSuggestion(null); }}
       />
 
-      {/* ── Delete confirmation ────────────────────────────────────────────── */}
-      {deleteConfirm && (
-        <div className="sugg-modal-backdrop" onClick={() => setDeleteConfirm(null)}>
-          <div className="sugg-confirm-sheet" onClick={e => e.stopPropagation()}>
-            <p className="sugg-confirm-text">Remove this suggestion?</p>
-            <div className="sugg-confirm-actions">
-              <button className="sugg-cancel-btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="sugg-submit-btn sugg-submit-btn--danger" onClick={confirmDelete}>Remove</button>
+      {/* ── Delete confirmation ────────────────────────────────────────────────── */}
+      {deleteConfirm && (() => {
+        // Count uploaded files that will also be removed from Drive
+        const dcAttachments = Array.isArray(deleteConfirm.attachment)
+          ? deleteConfirm.attachment
+          : deleteConfirm.attachment ? [deleteConfirm.attachment] : [];
+        const uploadedCount = dcAttachments.filter(a => a?.uploaded).length;
+        return (
+          <div className="sugg-modal-backdrop" onClick={() => setDeleteConfirm(null)}>
+            <div className="sugg-confirm-sheet" onClick={e => e.stopPropagation()}>
+              <p className="sugg-confirm-text">Remove this suggestion?</p>
+              {uploadedCount > 0 && (
+                <p style={{
+                  fontSize: '12px',
+                  color: 'var(--accent)',
+                  margin: '-4px 0 8px 0',
+                  lineHeight: 1.5,
+                }}>
+                  {uploadedCount} uploaded file{uploadedCount > 1 ? 's' : ''} will be permanently deleted.
+                </p>
+              )}
+              <div className="sugg-confirm-actions">
+                <button className="sugg-cancel-btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                <button className="sugg-submit-btn sugg-submit-btn--danger" onClick={confirmDelete}>Remove</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Folder Viewer (slides over the panel) ─────────────────────────── */}
       {openFolder && (

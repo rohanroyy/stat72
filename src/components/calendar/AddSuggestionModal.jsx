@@ -125,6 +125,7 @@ export default function AddSuggestionModal({
           name: result.name,
           driveId: result.id,
           mimeType: result.mimeType || file.type,
+          uploaded: true,   // marks this as a device-uploaded file (eligible for Drive deletion)
         });
       } catch (err) {
         console.error(err);

@@ -506,3 +506,34 @@ export async function uploadFileToDrive(fileBlob, fileName, parentFolderId, onPr
     xhr.send(body);
   });
 }
+
+/**
+ * Permanently deletes a file from Google Drive by its file ID.
+ * Only works for files uploaded via this app (requires admin OAuth token).
+ * Does NOT affect files/folders selected from existing Drive locations.
+ *
+ * @param {string} fileId - The Drive file ID to delete
+ * @returns {Promise<void>}
+ */
+export async function deleteFileFromDrive(fileId) {
+  if (!fileId) return;
+
+  // Use the same admin OAuth token as uploads
+  const token = await getOAuthTokenForUpload();
+
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  // 204 No Content = success, 404 = already gone — both are acceptable
+  if (!response.ok && response.status !== 404) {
+    let message = `Drive delete failed: HTTP ${response.status}`;
+    try {
+      const errData = await response.json();
+      message = errData?.error?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+}
