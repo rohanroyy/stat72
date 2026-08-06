@@ -381,12 +381,40 @@ export async function countFolderItems(folderId, apiKey) {
 }
 
 /**
- * Uploads a file (Blob/File object) to a specific Google Drive folder.
- * Uses a multipart upload request to the Google Drive API with OAuth 2.0 token.
+ * Gets an OAuth access token strictly from the admin refresh token.
+ * Service accounts CANNOT upload to regular Drive folders (no storage quota),
+ * so uploads must always use the admin's delegated OAuth token.
+ * Throws a user-friendly error if OAuth is not configured.
  */
-export async function uploadFileToDrive(fileBlob, fileName, parentFolderId, apiKey) {
-  const token = await ensureServiceAccountToken();
-  const key = apiKey || getApiKey();
+async function getOAuthTokenForUpload() {
+  // If we already have a valid cached token from admin OAuth, reuse it
+  if (currentAccessToken && Date.now() < tokenExpiryTime && adminRefreshToken) {
+    return currentAccessToken;
+  }
+
+  // Try to refresh using the admin's refresh token
+  if (adminRefreshToken) {
+    const token = await refreshAdminAccessToken();
+    if (token) return token;
+  }
+
+  // No OAuth token available — service account cannot be used for uploads
+  throw new Error(
+    'Google Drive upload requires Admin OAuth authorization. ' +
+    'Please ask your admin to connect their Google account in the Admin Panel ' +
+    '(Admin → "Connect Google Account for Uploads" button).'
+  );
+}
+
+/**
+ * Uploads a file (Blob/File object) to a specific Google Drive folder.
+ * IMPORTANT: This always uses the admin OAuth token (refresh token flow).
+ * Service accounts do NOT have storage quota and cannot upload to regular
+ * Drive folders — they only work with Shared/Team Drives.
+ */
+export async function uploadFileToDrive(fileBlob, fileName, parentFolderId) {
+  // Always use OAuth for uploads — service accounts lack storage quota
+  const token = await getOAuthTokenForUpload();
 
   const metadata = {
     name: fileName,
@@ -421,18 +449,11 @@ export async function uploadFileToDrive(fileBlob, fileName, parentFolderId, apiK
     base64Data +
     closeDelimiter;
 
-  let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+  const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
   const headers = {
     'Content-Type': `multipart/related; boundary=${boundary}`,
+    'Authorization': `Bearer ${token}`,
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  } else if (key) {
-    url += `&key=${key}`;
-  } else {
-    throw new Error('Google Drive API credentials are missing. Configure a Service Account or API key.');
-  }
 
   const response = await fetch(url, {
     method: 'POST',
@@ -442,7 +463,15 @@ export async function uploadFileToDrive(fileBlob, fileName, parentFolderId, apiK
 
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || `Upload failed: HTTP ${response.status}`);
+    const message = errData?.error?.message || `Upload failed: HTTP ${response.status}`;
+    // Provide a clearer message for quota/service-account errors
+    if (message.toLowerCase().includes('storage quota') || message.toLowerCase().includes('service account')) {
+      throw new Error(
+        'Upload failed: Admin OAuth authorization is required. ' +
+        'Please ask your admin to connect their Google account in the Admin Panel.'
+      );
+    }
+    throw new Error(message);
   }
 
   const data = await response.json();

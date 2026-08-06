@@ -6,6 +6,7 @@ import FileManagerContainer from './components/filemanager/FileManagerContainer'
 import AdminPage from './components/admin/AdminPage';
 import AdminLogin from './components/admin/AdminLogin';
 import ViewerModal from './components/viewers/ViewerModal';
+import { preCacheFile } from './services/fileCacheService';
 import PDFViewer from './components/viewers/PDFViewer';
 import ImageViewer from './components/viewers/ImageViewer';
 import VideoViewer from './components/viewers/VideoViewer';
@@ -712,6 +713,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     setViewerFile(file);
     // Push a history entry so browser/device back closes the viewer
     window.history.pushState({ viewerOpen: true }, '');
+    // Kick off background pre-caching for PDFs and images (fire-and-forget)
+    if (file.fileType === 'pdf' || file.fileType === 'image') {
+      preCacheFile(file);
+    }
   }, []);
 
   const handleCloseViewer = useCallback(() => {
