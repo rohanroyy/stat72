@@ -206,7 +206,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     return historyTab || localStorage.getItem('studydock_active_tab') || 'dashboard';
   });
 
-  // Deep-link: which exam to auto-open and which suggestion to highlight
+  // Deep-link: which exam to auto-open and which suggestion/confusion to highlight
   const [deepLinkExamId] = useState(() => {
     const sp = new URLSearchParams(window.location.search);
     return sp.get('e') || sp.get('exam') || null; // support both short and legacy
@@ -214,6 +214,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   const [deepLinkSuggId] = useState(() => {
     const sp = new URLSearchParams(window.location.search);
     return sp.get('s') || sp.get('sugg') || null;
+  });
+  const [deepLinkConfusionId] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get('c') || null;
   });
 
   // Sync tab changes with browser history so back/forward gesture works
@@ -226,12 +230,23 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   // Listen for browser back/forward button
   useEffect(() => {
     const onPopState = (e) => {
-      const tab = e.state?.tab;
+      const state = e.state;
+      // Skip states that belong to sub-panel navigation — those components
+      // handle their own popstate events and should NOT trigger a tab change.
+      if (
+        state?.examPanel ||
+        state?.confusionPanel ||
+        state?.suggFolderViewer ||
+        state?.viewerOpen ||
+        state?.glimpseOverlay
+      ) return;
+
+      const tab = state?.tab;
       if (tab) {
         setActiveTab(tab);
         localStorage.setItem('studydock_active_tab', tab);
       } else {
-        // No history state → go to dashboard
+        // No recognised state → go to dashboard
         setActiveTab('dashboard');
         localStorage.setItem('studydock_active_tab', 'dashboard');
       }
@@ -907,6 +922,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           suggestionUploadFolder={suggestionUploadFolder}
           initialExamId={deepLinkExamId}
           highlightSuggId={deepLinkSuggId}
+          highlightConfusionId={deepLinkConfusionId}
         />
       );
     }

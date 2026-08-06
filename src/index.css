@@ -7161,3 +7161,834 @@ a:focus-visible {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* =====================================================
+   Confusions Feature
+   ===================================================== */
+
+/* ── Floating Action Button on ExamDetailPanel ──────────── */
+
+.cf-edp-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 20px;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px 12px 14px;
+  border-radius: 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(232, 71, 43, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+  font-family: var(--font-body);
+}
+
+.cf-edp-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(232, 71, 43, 0.55), 0 4px 10px rgba(0, 0, 0, 0.25);
+  opacity: 0.93;
+}
+
+.cf-edp-fab:active {
+  transform: scale(0.97);
+}
+
+.cf-edp-fab svg {
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.cf-edp-fab-label {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cf-edp-fab-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  animation: cf-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cf-badge-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Confusion Panel (full-screen overlay) ──────────────── */
+
+.cf-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 350;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  animation: cf-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
+}
+
+@keyframes cf-slide-in {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Panel Header ────────────────────────────────────────── */
+
+.cf-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.cf-panel-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.cf-panel-back:hover {
+  background: var(--bg-surface-2);
+}
+
+.cf-panel-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.cf-panel-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+  line-height: 1.2;
+}
+
+.cf-panel-subtitle {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: block;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Animated Tab Bar ────────────────────────────────────── */
+
+.cf-panel-tabs {
+  position: relative;
+  display: flex;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cf-tab-btn {
+  flex: 1;
+  padding: 11px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.22s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.cf-tab-btn--active {
+  color: var(--accent);
+}
+
+/* Sliding underline indicator */
+.cf-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 2.5px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* ── Scrollable Body ─────────────────────────────────────── */
+
+.cf-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 120px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Post List ───────────────────────────────────────────── */
+
+.cf-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Post Card ───────────────────────────────────────────── */
+
+.cf-post-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition: box-shadow 0.15s;
+}
+
+.cf-post-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+
+.cf-post-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.cf-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+  background: #e8e8e8;
+}
+
+.cf-post-author-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cf-post-author-name {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-card);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cf-post-time {
+  font-size: 11px;
+  color: var(--text-card-muted);
+}
+
+.cf-post-corner-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Icon buttons ────────────────────────────────────────── */
+
+.cf-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-card-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.cf-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-card);
+}
+
+.cf-icon-btn--danger {
+  color: var(--accent);
+}
+
+.cf-icon-btn--danger:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.cf-icon-btn--copied {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+/* ── Post body button ────────────────────────────────────── */
+
+.cf-post-body-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cf-post-text {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text-card);
+  line-height: 1.45;
+  margin: 0 0 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Image Grid Display ──────────────────────────────────── */
+
+.cf-image-grid {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.cf-image-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.cf-image-grid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cf-image-grid--3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.cf-image-grid--4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cf-image-item {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-surface-2, rgba(0, 0, 0, 0.05));
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  max-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cf-image-item:hover {
+  transform: scale(1.01);
+  filter: brightness(1.03);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.cf-image-item img {
+  width: 100%;
+  height: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.cf-image-name-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ── Post stats row ──────────────────────────────────────── */
+
+.cf-post-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.cf-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-card-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 3px 9px 3px 7px;
+  border-radius: 20px;
+}
+
+.cf-solved-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #085041;
+  background: #d1fae5;
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+
+/* ── Detail view ─────────────────────────────────────────── */
+
+.cf-detail-view {
+  padding-bottom: 24px;
+}
+
+.cf-detail-post {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  margin-bottom: 20px;
+}
+
+.cf-detail-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-card);
+  line-height: 1.55;
+  margin: 0 0 10px;
+}
+
+/* ── Replies section ─────────────────────────────────────── */
+
+.cf-replies-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cf-replies-label span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.cf-replies-label-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-hairline);
+}
+
+.cf-no-replies {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.cf-replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Reply card ──────────────────────────────────────────── */
+
+.cf-reply-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.cf-reply-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.cf-reply-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-card);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cf-reply-time {
+  font-size: 11px;
+  color: var(--text-card-muted);
+  flex-shrink: 0;
+}
+
+.cf-reply-delete {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.cf-reply-text {
+  font-size: 13.5px;
+  color: #444;
+  line-height: 1.5;
+  margin: 0 0 6px;
+}
+
+/* ── FAB inside the confusion panel ─────────────────────── */
+
+.cf-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 20px;
+  z-index: 360;
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cf-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.cf-fab:active {
+  transform: scale(0.95);
+}
+
+/* ── Guest bar ───────────────────────────────────────────── */
+
+.cf-guest-bar {
+  position: fixed;
+  bottom: 28px;
+  left: 20px;
+  right: 20px;
+  z-index: 360;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Loading & Empty states ──────────────────────────────── */
+
+.cf-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.cf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.cf-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.cf-empty-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Composer bottom-sheet ───────────────────────────────── */
+
+.cf-composer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  animation: sugg-fade-in 0.2s ease;
+}
+
+.cf-composer-sheet {
+  position: relative;
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: sugg-sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.cf-composer-progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--bg-surface-2);
+  border-radius: 3px 3px 0 0;
+  overflow: hidden;
+}
+
+.cf-composer-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ff8c69);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.cf-composer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cf-composer-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-card);
+}
+
+.cf-composer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-card-muted);
+  cursor: pointer;
+}
+
+.cf-composer-textarea {
+  width: 100%;
+  resize: none;
+  font-size: 14px;
+  font-family: var(--font-body);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-card);
+  outline: none;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.cf-composer-textarea:focus {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.cf-composer-textarea::placeholder {
+  color: var(--text-card-muted);
+}
+
+.cf-composer-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf-composer-img-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-card);
+}
+
+.cf-composer-img-name {
+  flex: 1;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cf-composer-img-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  cursor: pointer;
+  color: var(--text-card-muted);
+  flex-shrink: 0;
+}
+
+.cf-composer-uploading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-card-muted);
+}
+
+.cf-composer-error {
+  font-size: 12.5px;
+  color: var(--accent);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cf-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cf-composer-attach-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1.5px dashed rgba(0, 0, 0, 0.2);
+  color: var(--text-card-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cf-composer-attach-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.09);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.cf-composer-attach-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cf-composer-attach-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.cf-composer-submit {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  background: var(--text-card);
+  color: var(--bg-card);
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.cf-composer-submit:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cf-composer-submit:not(:disabled):hover {
+  opacity: 0.88;
+}

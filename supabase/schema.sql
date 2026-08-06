@@ -76,6 +76,10 @@ CREATE POLICY "app_settings_delete" ON app_settings FOR DELETE USING (true);
 -- ALTER PUBLICATION supabase_realtime ADD TABLE drive_folders;
 -- ALTER PUBLICATION supabase_realtime ADD TABLE app_settings;
 
+-- Enable realtime for these tables
+ALTER PUBLICATION supabase_realtime ADD TABLE confusion_posts;
+ALTER PUBLICATION supabase_realtime ADD TABLE confusion_replies;
+
 -- Students (user profiles linked to auth.users)
 CREATE TABLE IF NOT EXISTS students (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -158,3 +162,68 @@ CREATE POLICY "glimpse_views_select" ON glimpse_views FOR SELECT USING (true);
 CREATE POLICY "glimpse_views_insert" ON glimpse_views FOR INSERT WITH CHECK (true);
 CREATE POLICY "glimpse_views_update" ON glimpse_views FOR UPDATE USING (true);
 CREATE POLICY "glimpse_views_delete" ON glimpse_views FOR DELETE USING (true);
+
+-- ── Confusions (Per-exam doubt & reply threads) ─────────────────────────────
+
+-- Posts: one doubt per entry, scoped to an exam
+CREATE TABLE IF NOT EXISTS confusion_posts (
+  id TEXT PRIMARY KEY,
+  exam_id TEXT NOT NULL,
+  author_id TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  author_avatar TEXT,
+  text TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  helpful INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'open',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS confusion_posts_exam_idx ON confusion_posts (exam_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS confusion_posts_author_idx ON confusion_posts (author_id);
+
+-- Replies: threaded under a post
+CREATE TABLE IF NOT EXISTS confusion_replies (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES confusion_posts(id) ON DELETE CASCADE,
+  author_id TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  author_avatar TEXT,
+  text TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  helpful INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS confusion_replies_post_idx ON confusion_replies (post_id, created_at ASC);
+
+-- Add author_avatar column if created prior
+ALTER TABLE confusion_posts ADD COLUMN IF NOT EXISTS author_avatar TEXT;
+ALTER TABLE confusion_replies ADD COLUMN IF NOT EXISTS author_avatar TEXT;
+
+ALTER TABLE confusion_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE confusion_replies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "confusion_posts_select" ON confusion_posts;
+DROP POLICY IF EXISTS "confusion_posts_insert" ON confusion_posts;
+DROP POLICY IF EXISTS "confusion_posts_update" ON confusion_posts;
+DROP POLICY IF EXISTS "confusion_posts_delete" ON confusion_posts;
+CREATE POLICY "confusion_posts_select" ON confusion_posts FOR SELECT USING (true);
+CREATE POLICY "confusion_posts_insert" ON confusion_posts FOR INSERT WITH CHECK (true);
+CREATE POLICY "confusion_posts_update" ON confusion_posts FOR UPDATE USING (true);
+CREATE POLICY "confusion_posts_delete" ON confusion_posts FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "confusion_replies_select" ON confusion_replies;
+DROP POLICY IF EXISTS "confusion_replies_insert" ON confusion_replies;
+DROP POLICY IF EXISTS "confusion_replies_update" ON confusion_replies;
+DROP POLICY IF EXISTS "confusion_replies_delete" ON confusion_replies;
+CREATE POLICY "confusion_replies_select" ON confusion_replies FOR SELECT USING (true);
+CREATE POLICY "confusion_replies_insert" ON confusion_replies FOR INSERT WITH CHECK (true);
+CREATE POLICY "confusion_replies_update" ON confusion_replies FOR UPDATE USING (true);
+CREATE POLICY "confusion_replies_delete" ON confusion_replies FOR DELETE USING (true);
+
+-- Realtime for confusion tables
+-- ALTER PUBLICATION supabase_realtime ADD TABLE confusion_posts;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE confusion_replies;
+

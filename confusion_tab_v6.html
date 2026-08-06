@@ -1,0 +1,251 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;">Confusion tab: switch between the full feed and your own doubts, open a post to read replies, or post a new question or reply with text and images.</h2>
+
+<div style="position:relative;overflow:hidden;border-radius:28px;padding:1rem;background:#0a0a0a;">
+
+<style>
+.cf-list-pane{display:block}
+.cf-detail-pane{display:none}
+[data-screen="detail"] .cf-list-pane{display:none}
+[data-screen="detail"] .cf-detail-pane{display:block}
+.cf-app ::placeholder{color:hsl(0 0% 0% / 0.35)}
+@media (min-width:768px){
+  .cf-app{display:flex;gap:16px;align-items:flex-start}
+  .cf-list-pane{display:block !important;width:360px;flex-shrink:0}
+  .cf-detail-pane{display:block !important;flex:1;min-width:0}
+}
+</style>
+
+<div class="cf-app" id="cfApp" data-screen="feed">
+<div class="cf-list-pane" id="cfList"></div>
+<div class="cf-detail-pane" id="cfDetail"></div>
+</div>
+</div>
+
+<script>
+var CURRENT_USER = "Rohan Roy";
+var TRACK = "background:hsl(0 0% 100% / 0.05);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid hsl(0 0% 100% / 0.1);";
+var CARD = "background:hsl(0 0% 100% / 0.94);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid hsl(0 0% 100% / 0.7);box-shadow:0 12px 30px hsl(0 0% 0% / 0.35);"
+var CARD_SOFT = "background:hsl(0 0% 100% / 0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid hsl(0 0% 100% / 0.6);box-shadow:0 6px 18px hsl(0 0% 0% / 0.25);";
+var PAGE_TXT = "#F5F5F4";
+var PAGE_TXT_MUTED = "hsl(0 0% 100% / 0.5)";
+var C_PRIMARY = "#1A1A18";
+var C_SECONDARY = "#5F5E5A";
+var C_MUTED = "#8A8880";
+var TAGS = {
+  stats: { label:"Statistics", fg:"#0C447C", bg:"#E6F1FB", icon:"ti-chart-bar" },
+  notice: { label:"Notice", fg:"#633806", bg:"#FAEEDA", icon:"ti-bell" },
+  tech: { label:"Tech help", fg:"#3C3489", bg:"#EEEDFE", icon:"ti-device-laptop" }
+};
+var cf = {
+  screen: "feed",
+  tab: "feed",
+  activeId: null,
+  composer: null,
+  draftText: "",
+  draftImages: [],
+  posts: [
+    { id:1, author:"Nusrat Jahan", seed:"Nusrat Jahan", time:"2h ago", tag:"stats", status:"open", text:"Stuck on the industrial statistics assignment, question 4 about stratified sampling. Can anyone explain how to pick the sample size per stratum?", images:["#B5D4F4","#9FE1CB"], views:41, helpful:6, saved:false,
+      replies:[ { id:1, author:"Rafi Islam", seed:"Rafi Islam", time:"1h ago", text:"You allocate proportionally to stratum size first, then adjust for variance if it's given in the question.", images:[], helpful:3, helpfulOn:false } ] },
+    { id:2, author:"Rohan Roy", seed:"Rohan Roy", time:"4h ago", tag:"notice", status:"open", text:"Does anyone have the room number for the makeup class tomorrow? The notice board photo is blurry.", images:["#F5C4B3"], views:18, helpful:1, saved:false, replies:[] },
+    { id:3, author:"Priya Das", seed:"Priya Das", time:"1d ago", tag:"tech", status:"solved", text:"My LMS login keeps failing after the update. Screenshot attached, anyone else facing this?", images:["#F4C0D1","#FAC775","#C0DD97"], views:87, helpful:12, saved:true,
+      replies:[ { id:1, author:"Rohan Roy", seed:"Rohan Roy", time:"20h ago", text:"Clear cookies for the site and try again, worked for me.", images:[], helpful:5, helpfulOn:false },
+                { id:2, author:"Nusrat Jahan", seed:"Nusrat Jahan", time:"18h ago", text:"Same issue here, still waiting on IT.", images:[], helpful:1, helpfulOn:false } ] },
+    { id:4, author:"Rohan Roy", seed:"Rohan Roy", time:"2d ago", tag:"stats", status:"solved", text:"Can someone check if my normal distribution calculation for the midterm review is right? Attaching my worksheet.", images:["#9FE1CB"], views:29, helpful:4, saved:false,
+      replies:[ { id:1, author:"Nusrat Jahan", seed:"Nusrat Jahan", time:"1d ago", text:"Looks right, just double check your z-score rounding on part b.", images:[], helpful:2, helpfulOn:false } ] }
+  ],
+  nextPostId: 5,
+  nextReplyId: 3
+};
+
+function esc(s){ var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+function renderAll() {
+  document.getElementById("cfApp").setAttribute("data-screen", cf.screen);
+  document.getElementById("cfList").innerHTML = feedHtml();
+  document.getElementById("cfDetail").innerHTML = cf.activeId ? detailHtml() : detailPlaceholder();
+  if (cf.composer) renderComposerOverlay(); else removeComposerOverlay();
+}
+
+function switchTab(t) { cf.tab = t; renderAll(); }
+
+function statusPill(status) {
+  if (status === "solved") return '<span style="font-size:10px;font-weight:500;color:#085041;background:#E1F5EE;padding:3px 9px;border-radius:20px;">Solved</span>';
+  return '<span style="font-size:10px;font-weight:500;color:#854F0B;background:#FAEEDA;padding:3px 9px;border-radius:20px;">Open</span>';
+}
+function tagPill(tagKey) {
+  var t = TAGS[tagKey];
+  return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:'+t.fg+';background:'+t.bg+';padding:3px 9px 3px 7px;border-radius:20px;">' +
+    '<i class="ti '+t.icon+'" style="font-size:11px;" aria-hidden="true"></i>'+t.label+'</span>';
+}
+function statPill(icon, val, filled) {
+  return '<span style="display:flex;align-items:center;gap:4px;border:1px solid hsl(0 0% 0% / 0.1);background:hsl(0 0% 0% / 0.03);padding:4px 10px;border-radius:20px;">' +
+    '<i class="ti '+icon+'" style="font-size:12px;color:'+(filled ? "#185FA5" : C_PRIMARY)+';" aria-hidden="true"></i>' +
+    '<span style="font-size:11px;font-weight:500;color:'+(filled ? "#185FA5" : C_PRIMARY)+';">'+val+'</span></span>';
+}
+
+function feedHtml() {
+  var tabs = '<div style="display:flex;'+TRACK+'border-radius:20px;padding:3px;margin-bottom:16px;">' +
+    '<button onclick="switchTab(\'feed\')" style="flex:1;padding:8px 0;border-radius:18px;border:none;background:'+(cf.tab==="feed"?"#F5F5F4":"transparent")+';">' +
+    '<span style="font-size:12px;font-weight:500;color:'+(cf.tab==="feed"?"#0a0a0a":PAGE_TXT_MUTED)+';">Feed</span></button>' +
+    '<button onclick="switchTab(\'mine\')" style="flex:1;padding:8px 0;border-radius:18px;border:none;background:'+(cf.tab==="mine"?"#F5F5F4":"transparent")+';">' +
+    '<span style="font-size:12px;font-weight:500;color:'+(cf.tab==="mine"?"#0a0a0a":PAGE_TXT_MUTED)+';">My doubts</span></button></div>';
+  var header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+    '<div><p style="font-size:19px;font-weight:500;margin:0;color:'+PAGE_TXT+';">Confusion</p><p style="font-size:12px;color:'+PAGE_TXT_MUTED+';margin:3px 0 0;">Ask, help, get unstuck</p></div>' +
+    '<button aria-label="New post" onclick="openComposer(\'post\', null)" style="width:38px;height:38px;border-radius:50%;background:#F5F5F4;border:none;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">' +
+    '<i class="ti ti-plus" style="font-size:18px;color:#0a0a0a;" aria-hidden="true"></i></button></div>';
+  var list = cf.tab === "mine" ? cf.posts.filter(function(p){ return p.author === CURRENT_USER; }) : cf.posts;
+  if (list.length === 0) {
+    return header + tabs + '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:3rem 0;color:'+C_SECONDARY+';'+CARD_SOFT+'border-radius:20px;">' +
+      '<i class="ti ti-message-off" style="font-size:22px;" aria-hidden="true"></i>' +
+      '<span style="font-size:13px;">You haven\'t asked anything yet</span>' +
+      '<button onclick="openComposer(\'post\',null)" style="font-size:12px;font-weight:500;color:#fff;background:#0a0a0a;padding:7px 16px;border-radius:20px;border:none;">Ask a question</button></div>';
+  }
+  var items = list.map(function(p){
+    var mine = p.author === CURRENT_USER;
+    var imgs = p.images.length ? '<div style="display:flex;gap:6px;margin-top:10px;">' + p.images.slice(0,4).map(function(c){ return '<div style="width:44px;height:44px;border-radius:10px;background:'+c+';border:1px solid hsl(0 0% 0% / 0.08);"></div>'; }).join("") + '</div>' : "";
+    var cornerBtn = mine
+      ? '<button aria-label="Delete" onclick="deletePost('+p.id+')" style="width:30px;height:30px;border-radius:50%;background:hsl(0 0% 0% / 0.04);border:1px solid hsl(0 0% 0% / 0.08);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;"><i class="ti ti-trash" style="font-size:14px;color:#A32D2D;" aria-hidden="true"></i></button>'
+      : '<button aria-label="'+(p.saved?"Unsave":"Save")+'" onclick="toggleSave('+p.id+')" style="width:30px;height:30px;border-radius:50%;background:hsl(0 0% 0% / 0.04);border:1px solid hsl(0 0% 0% / 0.08);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;"><i class="ti '+(p.saved?"ti-bookmark-filled":"ti-bookmark")+'" style="font-size:14px;color:'+C_PRIMARY+';" aria-hidden="true"></i></button>';
+    return '<div style="'+CARD+'border-radius:22px;padding:1.1rem;margin-bottom:12px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+      '<div style="width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid hsl(0 0% 0% / 0.08);"><img src="https://api.dicebear.com/7.x/initials/svg?seed='+encodeURIComponent(p.seed)+'" style="width:100%;height:100%;object-fit:cover;" alt="" /></div>' +
+      '<div style="min-width:0;flex:1;"><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;font-weight:500;color:'+C_PRIMARY+';">'+esc(p.author)+'</span>' +
+      (p.status==="solved" ? '<i class="ti ti-rosette-discount-check" style="font-size:13px;color:#0F6E56;" aria-hidden="true"></i>' : "") + '</div>' +
+      '<span style="font-size:11px;color:'+C_MUTED+';">'+p.time+'</span></div>' + cornerBtn + '</div>' +
+      '<button onclick="openDetail('+p.id+')" style="width:100%;text-align:left;background:transparent;border:none;padding:0;display:block;">' +
+      '<p style="font-size:15px;font-weight:500;margin:0 0 10px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:'+C_PRIMARY+';">'+esc(p.text)+'</p>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+tagPill(p.tag)+statusPill(p.status)+'</div>' +
+      imgs + '</button>' +
+      '<div style="height:1px;background:hsl(0 0% 0% / 0.07);margin:12px 0 10px;"></div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' + statPill("ti-thumb-up", p.helpful, p.helpful>5) + statPill("ti-message-circle-2", p.replies.length, false) +
+      '<span style="margin-left:auto;display:flex;align-items:center;gap:4px;color:'+C_MUTED+';"><i class="ti ti-eye" style="font-size:13px;" aria-hidden="true"></i><span style="font-size:11px;">'+p.views+'</span></span></div>' +
+      '</div>';
+  }).join("");
+  return header + tabs + items;
+}
+
+function toggleSave(id) { var p = cf.posts.filter(function(x){ return x.id === id; })[0]; if (p) p.saved = !p.saved; renderAll(); }
+function deletePost(id) {
+  cf.posts = cf.posts.filter(function(x){ return x.id !== id; });
+  if (cf.activeId === id) { cf.activeId = null; cf.screen = "feed"; }
+  renderAll();
+}
+function toggleHelpful(replyId) {
+  var p = cf.posts.filter(function(x){ return x.id === cf.activeId; })[0];
+  if (!p) return;
+  var r = p.replies.filter(function(x){ return x.id === replyId; })[0];
+  if (!r) return;
+  r.helpfulOn = !r.helpfulOn;
+  r.helpful += r.helpfulOn ? 1 : -1;
+  renderAll();
+}
+
+function detailPlaceholder() {
+  return '<div style="display:flex;align-items:center;justify-content:center;padding:3rem 0;color:'+C_SECONDARY+';'+CARD_SOFT+'border-radius:20px;">' +
+    '<span style="font-size:13px;">Select a post to read it</span></div>';
+}
+
+function openDetail(id) { cf.activeId = id; cf.screen = "detail"; renderAll(); }
+function openFeed() { cf.screen = "feed"; renderAll(); }
+
+function imgRow(images) {
+  if (!images.length) return "";
+  return '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' + images.map(function(c){ return '<div style="width:56px;height:56px;border-radius:10px;background:'+c+';border:1px solid hsl(0 0% 0% / 0.08);"></div>'; }).join("") + '</div>';
+}
+
+function detailHtml() {
+  var p = cf.posts.filter(function(x){ return x.id === cf.activeId; })[0];
+  if (!p) return detailPlaceholder();
+  var back = '<button aria-label="Back to feed" onclick="openFeed()" style="width:34px;height:34px;border-radius:50%;'+TRACK+'display:flex;align-items:center;justify-content:center;padding:0;margin-bottom:14px;">' +
+    '<i class="ti ti-arrow-left" style="font-size:17px;color:'+PAGE_TXT+';" aria-hidden="true"></i></button>';
+  var post = '<div style="'+CARD+'border-radius:22px;padding:1.1rem;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+    '<div style="width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid hsl(0 0% 0% / 0.08);"><img src="https://api.dicebear.com/7.x/initials/svg?seed='+encodeURIComponent(p.seed)+'" style="width:100%;height:100%;object-fit:cover;" alt="" /></div>' +
+    '<div><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:13px;font-weight:500;color:'+C_PRIMARY+';">'+esc(p.author)+'</span>' +
+    (p.status==="solved" ? '<i class="ti ti-rosette-discount-check" style="font-size:14px;color:#0F6E56;" aria-hidden="true"></i>' : "") + '</div>' +
+    '<p style="font-size:11px;color:'+C_MUTED+';margin:0;">'+p.time+'</p></div></div>' +
+    '<p style="font-size:15px;line-height:1.55;margin:0 0 10px;font-weight:500;color:'+C_PRIMARY+';">'+esc(p.text)+'</p>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+tagPill(p.tag)+statusPill(p.status)+'</div>' +
+    imgRow(p.images) +
+    '<div style="height:1px;background:hsl(0 0% 0% / 0.07);margin:12px 0 10px;"></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' + statPill("ti-thumb-up", p.helpful, false) +
+    '<span style="display:flex;align-items:center;gap:4px;color:'+C_MUTED+';"><i class="ti ti-eye" style="font-size:13px;" aria-hidden="true"></i><span style="font-size:11px;">'+p.views+'</span></span></div>' +
+    '</div>' +
+    '<button onclick="openComposer(\'reply\','+p.id+')" style="display:flex;align-items:center;gap:6px;margin:14px 0 18px;padding:9px 18px;border-radius:20px;background:#F5F5F4;border:none;">' +
+    '<i class="ti ti-corner-up-left" style="font-size:14px;color:#0a0a0a;" aria-hidden="true"></i>' +
+    '<span style="font-size:12px;font-weight:500;color:#0a0a0a;">Reply</span></button>';
+  var replies = p.replies.length === 0
+    ? '<p style="font-size:12px;color:'+PAGE_TXT_MUTED+';">No replies yet. Be the first to help.</p>'
+    : p.replies.map(function(r){
+        return '<div style="'+CARD_SOFT+'border-radius:16px;padding:0.9rem 1rem;margin-bottom:10px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+          '<div style="width:26px;height:26px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid hsl(0 0% 0% / 0.08);"><img src="https://api.dicebear.com/7.x/initials/svg?seed='+encodeURIComponent(r.seed)+'" style="width:100%;height:100%;object-fit:cover;" alt="" /></div>' +
+          '<span style="font-size:12px;font-weight:500;color:'+C_PRIMARY+';">'+esc(r.author)+'</span>' +
+          '<span style="font-size:11px;color:'+C_MUTED+';">· '+r.time+'</span></div>' +
+          '<p style="font-size:13px;color:'+C_SECONDARY+';line-height:1.5;margin:0;">'+esc(r.text)+'</p>' +
+          imgRow(r.images) +
+          '<button aria-label="Mark helpful" onclick="toggleHelpful('+r.id+')" style="display:flex;align-items:center;gap:4px;background:hsl(0 0% 0% / 0.03);border:1px solid '+(r.helpfulOn ? "#85B7EB" : "hsl(0 0% 0% / 0.1)")+';padding:4px 10px;border-radius:20px;margin-top:8px;">' +
+          '<i class="ti ti-thumb-up" style="font-size:12px;color:'+(r.helpfulOn ? "#185FA5" : C_SECONDARY)+';" aria-hidden="true"></i>' +
+          '<span style="font-size:11px;font-weight:500;color:'+(r.helpfulOn ? "#185FA5" : C_SECONDARY)+';">'+r.helpful+'</span></button>' +
+          '</div>';
+      }).join("");
+  return back + post + '<p style="font-size:11px;color:'+PAGE_TXT_MUTED+';text-transform:uppercase;letter-spacing:0.03em;margin:14px 0 10px;">'+p.replies.length+' repl'+(p.replies.length===1?"y":"ies")+'</p>' + replies;
+}
+
+function openComposer(mode, postId) { cf.composer = mode; cf.composerPostId = postId; cf.draftText = ""; cf.draftImages = []; renderAll(); }
+function closeComposer() { cf.composer = null; renderAll(); }
+function addDraftImage() {
+  var palette = ["#B5D4F4","#9FE1CB","#F5C4B3","#F4C0D1","#FAC775","#C0DD97"];
+  cf.draftImages.push(palette[Math.floor(Math.random()*palette.length)]);
+  renderComposerOverlay();
+}
+function removeDraftImage(i) { cf.draftImages.splice(i,1); renderComposerOverlay(); }
+function onDraftText(v) {
+  cf.draftText = v;
+  var btn = document.getElementById("cfSubmitBtn");
+  if (btn) btn.disabled = cf.draftText.trim().length === 0;
+}
+function submitComposer() {
+  if (cf.draftText.trim().length === 0) return;
+  if (cf.composer === "post") {
+    var np = { id: cf.nextPostId++, author:CURRENT_USER, seed:CURRENT_USER, time:"now", tag:"tech", status:"open", text:cf.draftText, images:cf.draftImages.slice(), views:0, helpful:0, saved:false, replies:[] };
+    cf.posts.unshift(np);
+    cf.composer = null;
+    cf.screen = "feed";
+  } else {
+    var post = cf.posts.filter(function(x){ return x.id === cf.composerPostId; })[0];
+    if (post) post.replies.push({ id: cf.nextReplyId++, author:CURRENT_USER, seed:CURRENT_USER, time:"now", text:cf.draftText, images:cf.draftImages.slice(), helpful:0, helpfulOn:false });
+    cf.composer = null;
+  }
+  renderAll();
+}
+
+function removeComposerOverlay() { var el = document.getElementById("cfOverlay"); if (el) el.remove(); }
+function renderComposerOverlay() {
+  removeComposerOverlay();
+  var wrap = document.createElement("div");
+  wrap.id = "cfOverlay";
+  wrap.style.cssText = CARD + "border-radius:22px;padding:1.1rem;margin-top:14px;";
+  var imgs = cf.draftImages.map(function(c,i){
+    return '<div style="position:relative;width:52px;height:52px;flex-shrink:0;">' +
+      '<div style="width:100%;height:100%;border-radius:10px;background:'+c+';border:1px solid hsl(0 0% 0% / 0.08);"></div>' +
+      '<button aria-label="Remove image" onclick="removeDraftImage('+i+')" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;padding:0;">' +
+      '<i class="ti ti-x" style="font-size:10px;color:#fff;" aria-hidden="true"></i></button></div>';
+  }).join("");
+  wrap.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+    '<span style="font-size:13px;font-weight:500;color:'+C_PRIMARY+';">'+(cf.composer === "post" ? "Post a question" : "Write a reply")+'</span>' +
+    '<button aria-label="Close" onclick="closeComposer()" style="width:26px;height:26px;border-radius:50%;background:hsl(0 0% 0% / 0.05);border:1px solid hsl(0 0% 0% / 0.1);display:flex;align-items:center;justify-content:center;padding:0;">' +
+    '<i class="ti ti-x" style="font-size:13px;color:'+C_PRIMARY+';" aria-hidden="true"></i></button></div>' +
+    '<textarea id="cfTextarea" rows="3" placeholder="'+(cf.composer === "post" ? "Describe what you\'re stuck on" : "Share your answer")+'" oninput="onDraftText(this.value)" style="width:100%;resize:none;font-size:13px;padding:8px;height:auto;background:hsl(0 0% 0% / 0.03);border:1px solid hsl(0 0% 0% / 0.1);color:'+C_PRIMARY+';"></textarea>' +
+    '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">' + imgs +
+    '<button aria-label="Attach image" onclick="addDraftImage()" style="width:52px;height:52px;border-radius:10px;background:hsl(0 0% 0% / 0.03);border:1px dashed hsl(0 0% 0% / 0.15);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">' +
+    '<i class="ti ti-photo-plus" style="font-size:18px;color:'+C_MUTED+';" aria-hidden="true"></i></button></div>' +
+    '<button id="cfSubmitBtn" onclick="submitComposer()" disabled style="width:100%;margin-top:12px;padding:10px 0;border-radius:12px;background:#0a0a0a;border:none;">' +
+    '<span style="font-size:13px;font-weight:500;color:#fff;">'+(cf.composer === "post" ? "Post" : "Reply")+'</span></button>';
+  var target = cf.screen === "detail" ? document.getElementById("cfDetail") : document.getElementById("cfList");
+  target.appendChild(wrap);
+}
+
+renderAll();
+</script>

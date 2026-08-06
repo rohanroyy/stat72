@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SuggestionCard from './SuggestionCard';
 import AddSuggestionModal from './AddSuggestionModal';
 import SuggestionFolderViewer from './SuggestionFolderViewer';
+import ConfusionPanel from './ConfusionPanel';
 import {
   fetchSuggestions,
   addSuggestion,
@@ -9,6 +10,7 @@ import {
   deleteSuggestion,
   subscribeToSuggestions,
 } from '../../services/suggestionService';
+import { fetchPostCount, subscribeToConfusions } from '../../services/confusionService';
 import { getFileType, deleteFileFromDrive } from '../../services/driveService';
 
 const MONTH_NAMES = [
@@ -34,13 +36,15 @@ function formatExamDate(dateStr) {
  *   - foldersList: configured root drive folders for picker
  *   - onClose()
  */
-export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, suggestionUploadFolder = '', highlightSuggId = null, onClose }) {
+export default function ExamDetailPanel({ exam, currentUser, topperIds = [], foldersList = [], onOpenFile, suggestionUploadFolder = '', highlightSuggId = null, highlightConfusionId = null, onClose }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSuggestion, setEditingSuggestion] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [openFolder, setOpenFolder] = useState(null); // { driveId, name } — folder to browse
+  const [confusionOpen, setConfusionOpen] = useState(!!highlightConfusionId); // auto-open on deep-link
+  const [confusionCount, setConfusionCount] = useState(null); // null = not yet loaded
 
   const isTopper = currentUser && topperIds.includes(currentUser.id);
 
@@ -63,12 +67,27 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
     loadSuggestions();
   }, [loadSuggestions]);
 
-  // Realtime subscription
+  // Realtime subscription for suggestions
   useEffect(() => {
     if (!exam?.id) return;
     const unsub = subscribeToSuggestions(exam.id, loadSuggestions);
     return unsub;
   }, [exam?.id, loadSuggestions]);
+
+  // ── Confusion count (for FAB badge) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!exam?.id) return;
+    fetchPostCount(exam.id).then(setConfusionCount);
+  }, [exam?.id]);
+
+  // Refresh badge count in real-time when any confusion post changes
+  useEffect(() => {
+    if (!exam?.id) return;
+    const unsub = subscribeToConfusions(exam.id, () => {
+      fetchPostCount(exam.id).then(setConfusionCount);
+    });
+    return unsub;
+  }, [exam?.id]);
 
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -85,7 +104,8 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
       const isExamSubState = e.state && (
         e.state.examPanel ||
         e.state.suggFolderViewer ||
-        e.state.viewerOpen
+        e.state.viewerOpen ||
+        e.state.confusionPanel   // confusion panel manages its own back navigation
       );
       if (!isExamSubState) {
         onCloseRef.current();
@@ -304,6 +324,26 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         </div>
       </div>
 
+      {/* ── Confusion FAB — floating in bottom-right of the panel ──────── */}
+      {!confusionOpen && (
+        <button
+          className="cf-edp-fab"
+          onClick={() => setConfusionOpen(true)}
+          aria-label="Open Confusions"
+          title="Confusions"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="cf-edp-fab-label">Confusions</span>
+          {confusionCount > 0 && (
+            <span className="cf-edp-fab-badge" aria-label={`${confusionCount} doubts`}>
+              {confusionCount > 99 ? '99+' : confusionCount}
+            </span>
+          )}
+        </button>
+      )}
+
       {/* ── Add/Edit Suggestion Modal ──────────────────────────────────────── */}
       <AddSuggestionModal
         open={modalOpen}
@@ -350,6 +390,19 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
           folder={openFolder}
           onOpenFile={onOpenFile}
           onClose={() => setOpenFolder(null)}
+        />
+      )}
+
+      {/* ── Confusion Panel (slides over exam detail) ──────────────────────── */}
+      {confusionOpen && (
+        <ConfusionPanel
+          examId={exam.id}
+          examName={exam.subject}
+          currentUser={currentUser}
+          suggestionUploadFolder={suggestionUploadFolder}
+          highlightPostId={highlightConfusionId}
+          onOpenFile={onOpenFile}
+          onClose={() => setConfusionOpen(false)}
         />
       )}
     </>

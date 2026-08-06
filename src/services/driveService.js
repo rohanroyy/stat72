@@ -415,6 +415,44 @@ async function getOAuthTokenForUpload() {
 }
 
 /**
+ * Creates a folder in Google Drive inside the given parent folder.
+ * Uses admin OAuth token (same as uploads).
+ *
+ * @param {string} folderName
+ * @param {string} parentFolderId
+ * @returns {Promise<{id: string, name: string}>}
+ */
+export async function createFolderInDrive(folderName, parentFolderId) {
+  const token = await getOAuthTokenForUpload();
+
+  const response = await fetch(
+    `${DRIVE_API_BASE}/files?supportsAllDrives=true`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentFolderId],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(
+      errData?.error?.message || `Folder creation failed: HTTP ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return { id: data.id, name: data.name };
+}
+
+/**
  * Uploads a file (Blob/File object) to a specific Google Drive folder.
  * IMPORTANT: This always uses the admin OAuth token (refresh token flow).
  * Uses XHR for real upload progress — no base64 encoding (raw binary multipart).

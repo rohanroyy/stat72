@@ -86,6 +86,7 @@ export default function ExamCalendar({
   suggestionUploadFolder = '',
   initialExamId = null,
   highlightSuggId = null,
+  highlightConfusionId = null,
 }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
@@ -433,6 +434,7 @@ export default function ExamCalendar({
           onOpenFile={onOpenFile}
           suggestionUploadFolder={suggestionUploadFolder}
           highlightSuggId={activeHighlightSuggId}
+          highlightConfusionId={highlightConfusionId}
           onClose={handleCloseDetail}
         />
       )}
