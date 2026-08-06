@@ -10,7 +10,7 @@ import {
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification, deleteBroadcastNotification } from '../../services/broadcastService';
 import { fetchTopperIds, saveTopperIds } from '../../services/suggestionService';
-import { startAdminGoogleAuth } from '../../services/driveService';
+import { startAdminGoogleAuth, getOAuthRedirectUri } from '../../services/driveService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -1094,14 +1094,61 @@ export default function AdminPage({
                   </p>
                 ) : null}
 
-                <div style={{ marginTop: '12px', padding: '10px', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '12px', lineHeight: '1.4' }}>
-                  <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Action Required in Google Cloud Console:</span>
-                  <p style={{ margin: '4px 0 8px 0', color: 'var(--text-tertiary)' }}>
-                    Google OAuth requires registering the exact redirect URL. Copy the URI below and paste it into the <strong>Authorized redirect URIs</strong> list under your OAuth 2.0 Web Client credentials in the Google Cloud Console:
+                {/* Redirect URI instructions — the critical step */}
+                <div style={{ marginTop: '16px', padding: '14px', background: 'rgba(232, 71, 43, 0.06)', borderRadius: '8px', border: '1.5px solid rgba(232, 71, 43, 0.3)', fontSize: '12.5px', lineHeight: '1.5' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: 'var(--accent)', marginBottom: '8px', fontSize: '13px' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Required: Register Redirect URI in Google Cloud Console
+                  </div>
+                  <p style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>
+                    Go to <strong>Google Cloud Console → APIs &amp; Services → Credentials → your OAuth 2.0 Client ID → Edit</strong>, then add <em>both</em> these URIs under <strong>Authorized redirect URIs</strong>:
                   </p>
-                  <code style={{ background: 'var(--bg-primary)', padding: '4px 8px', borderRadius: '4px', color: 'var(--accent)', fontFamily: 'monospace', display: 'inline-block', userSelect: 'all' }}>
-                    {window.location.origin}
-                  </code>
+                  {[
+                    getOAuthRedirectUri(),
+                    'http://localhost:5173/oauth/callback',
+                    'http://localhost:5174/oauth/callback',
+                  ].map((uri) => (
+                    <div key={uri} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <code style={{
+                        flex: 1,
+                        background: 'var(--bg-surface)',
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        color: 'var(--accent)',
+                        fontFamily: 'monospace',
+                        fontSize: '11.5px',
+                        wordBreak: 'break-all',
+                        border: '1px solid var(--border-hairline)',
+                        userSelect: 'all',
+                        display: 'block',
+                      }}>
+                        {uri}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(uri).catch(() => {});
+                        }}
+                        title="Copy to clipboard"
+                        style={{
+                          flexShrink: 0,
+                          background: 'var(--bg-surface-2)',
+                          border: '1px solid var(--border-hairline)',
+                          borderRadius: '4px',
+                          padding: '5px 8px',
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                  <p style={{ margin: '8px 0 0 0', color: 'var(--text-tertiary)', fontSize: '11.5px' }}>
+                    ⚡ After adding, click <strong>Save</strong> in Google Cloud Console, then come back and click <strong>Authorize Admin Google Account</strong> above.
+                  </p>
                 </div>
               </div>
             )}

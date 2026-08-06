@@ -36,6 +36,14 @@ export function getAdminRefreshToken() {
 }
 
 /**
+ * Returns the fixed OAuth redirect URI — always <origin>/oauth/callback.
+ * This must be registered in Google Cloud Console under Authorized redirect URIs.
+ */
+export function getOAuthRedirectUri() {
+  return `${window.location.origin}/oauth/callback`;
+}
+
+/**
  * Initiates the Google OAuth 2.0 flow for the admin account to obtain offline refresh token.
  */
 export function startAdminGoogleAuth() {
@@ -44,7 +52,7 @@ export function startAdminGoogleAuth() {
     alert('Google OAuth Client ID is not configured. Please check your settings or environment variables.');
     return;
   }
-  const redirectUri = window.location.origin;
+  const redirectUri = getOAuthRedirectUri();
   const scope = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
@@ -65,7 +73,7 @@ export async function exchangeAuthCode(code) {
   if (!clientId || !clientSecret) {
     throw new Error('Google OAuth credentials (Client ID and Client Secret) are not configured.');
   }
-  const redirectUri = window.location.origin;
+  const redirectUri = getOAuthRedirectUri();
 
   const bodyParams = new URLSearchParams({
     code,

@@ -25,7 +25,7 @@ import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFrom
 import { fetchTopperIds } from './services/suggestionService';
 import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
 import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings, saveSuggestionUploadFolder, saveGoogleServiceAccount, saveGoogleRefreshToken, saveGoogleClientId, saveGoogleClientSecret } from './services/settingsService';
-import { setAccessToken, setServiceAccountConfig, setAdminRefreshToken, exchangeAuthCode } from './services/driveService';
+import { setAccessToken, setServiceAccountConfig, setAdminRefreshToken, exchangeAuthCode, getOAuthRedirectUri } from './services/driveService';
 import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
@@ -68,26 +68,27 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    // Check for Google OAuth callback code in URL
+    // Check for Google OAuth callback code in URL (/oauth/callback path)
     const searchParams = new URLSearchParams(window.location.search);
     const code = searchParams.get('code');
-    if (code) {
+    const isOAuthCallback = window.location.pathname === '/oauth/callback' || code;
+    if (isOAuthCallback && code) {
       (async () => {
         try {
           const tokens = await exchangeAuthCode(code);
           if (tokens.refresh_token) {
             await saveGoogleRefreshToken(tokens.refresh_token);
             setAdminRefreshToken(tokens.refresh_token);
-            alert('Google Drive admin authorization successful!');
+            alert('✅ Google Drive admin authorization successful! Toppers can now upload files.');
           } else {
-            alert('Warning: No refresh token returned. If re-authorizing, please remove the app access from your Google Account settings first.');
+            alert('⚠️ Warning: No refresh token returned. If re-authorizing, please revoke app access at myaccount.google.com/permissions first, then try again.');
           }
         } catch (err) {
           console.error('Failed to exchange auth code:', err);
-          alert('Failed to authorize Google Drive: ' + err.message);
+          alert('❌ Failed to authorize Google Drive: ' + err.message);
         } finally {
-          const cleanUrl = window.location.origin + window.location.pathname;
-          window.location.href = cleanUrl;
+          // Redirect back to admin page after handling the callback
+          window.location.href = window.location.origin + '/?admin=true';
         }
       })();
       return;
