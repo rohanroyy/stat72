@@ -70,6 +70,15 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
     loadSuggestions();
   }, [loadSuggestions]);
 
+  // Hide bottom navigation bar while ExamDetailPanel is open
+  useEffect(() => {
+    document.body.classList.add('exam-detail-open');
+    return () => {
+      document.body.classList.remove('exam-detail-open');
+    };
+  }, []);
+
+
   // Realtime subscription for suggestions
   useEffect(() => {
     if (!exam?.id) return;

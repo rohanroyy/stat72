@@ -352,6 +352,33 @@ a:focus-visible {
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), color 300ms ease;
 }
 
+/* Badge dot on navigation bar icon */
+.capsule-notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  background-color: var(--accent, #FF6B00);
+  border: 2px solid #141416;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255, 107, 0, 0.7);
+  animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(255, 107, 0, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0); }
+}
+
+/* Hide navigation bar on ExamDetailPanel to avoid overlapping */
+body.exam-detail-open .bottom-nav-wrapper,
+body:has(.exam-detail-panel) .bottom-nav-wrapper {
+  display: none !important;
+}
+
+
 .capsule-label-wrap {
   display: inline-block;
   white-space: nowrap;

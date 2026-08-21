@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function BottomNav({ activeTab = 'dashboard', onChangeTab }) {
+export default function BottomNav({ activeTab = 'dashboard', onChangeTab, unreadNotifCount = 0 }) {
   const tabs = [
     {
       id: 'dashboard',
@@ -54,6 +54,7 @@ export default function BottomNav({ activeTab = 'dashboard', onChangeTab }) {
       id: 'announcement',
       label: 'Notification',
       ariaLabel: 'Notification',
+      hasBadge: unreadNotifCount > 0,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -76,7 +77,10 @@ export default function BottomNav({ activeTab = 'dashboard', onChangeTab }) {
               aria-label={tab.ariaLabel}
               id={`nav-${tab.id}`}
             >
-              <span className="capsule-icon-wrap">{tab.icon}</span>
+              <span className="capsule-icon-wrap" style={{ position: 'relative' }}>
+                {tab.icon}
+                {tab.hasBadge && <span className="capsule-notif-badge" />}
+              </span>
               <span className="capsule-label-wrap">{tab.label}</span>
             </button>
           );

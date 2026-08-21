@@ -266,6 +266,10 @@ CREATE POLICY "user_notifs_select" ON user_notifications
 CREATE POLICY "user_notifs_insert" ON user_notifications
   FOR INSERT WITH CHECK (true);
 
+-- Users can update read status on notifications
+CREATE POLICY "user_notifs_update" ON user_notifications
+  FOR UPDATE USING (true);
+
 -- User can only delete their own notifications (dismiss)
 -- OR delete any notification that references a piece of content they deleted (cleanup)
 CREATE POLICY "user_notifs_delete" ON user_notifications

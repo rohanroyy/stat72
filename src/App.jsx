@@ -31,6 +31,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
 import { initExamNotifications } from './services/notificationService';
 import { fetchBroadcastNotifications } from './services/broadcastService';
+import { fetchUnreadCount, markAllAsRead, subscribeToMyNotifications } from './services/userNotificationService';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
@@ -357,6 +358,37 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     return initialData?.settings?.googleClientSecret || localStorage.getItem('bahattor_google_client_secret') || '';
   });
 
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  const updateUnreadCount = useCallback(async () => {
+    if (!currentUser?.id) {
+      setUnreadNotifCount(0);
+      return;
+    }
+    try {
+      const count = await fetchUnreadCount(currentUser.id);
+      setUnreadNotifCount(count);
+    } catch {
+      setUnreadNotifCount(0);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    updateUnreadCount();
+    const unsub = subscribeToMyNotifications(currentUser.id, () => {
+      updateUnreadCount();
+    });
+    return () => unsub();
+  }, [currentUser?.id, updateUnreadCount]);
+
+  useEffect(() => {
+    if (activeTab === 'announcement' && currentUser?.id && unreadNotifCount > 0) {
+      markAllAsRead(currentUser.id);
+      setUnreadNotifCount(0);
+    }
+  }, [activeTab, currentUser?.id, unreadNotifCount]);
+
   // Load topper IDs on boot
   useEffect(() => {
     fetchTopperIds().then(setTopperIds).catch(console.error);
@@ -366,6 +398,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   useEffect(() => {
     initExamNotifications(examsList);
   }, [examsList]);
+
 
   const lastProcessedNotifRef = useRef(localStorage.getItem('bahattor_last_processed_notif_id') || '');
 
@@ -1005,10 +1038,15 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
       {/* Navigation bar — hidden in Admin and when user is not logged in */}
       {!isAdminHost && currentUser && (
-              <BottomNav
+        <BottomNav
           activeTab={activeTab}
+          unreadNotifCount={unreadNotifCount}
           onChangeTab={(tab) => {
             navigateToTab(tab);
+            if (tab === 'announcement' && currentUser?.id) {
+              markAllAsRead(currentUser.id);
+              setUnreadNotifCount(0);
+            }
             if (tab === 'materials') {
               setSelectedRootFolder(null);
               localStorage.removeItem('studydock_selected_folder');

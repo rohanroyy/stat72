@@ -255,6 +255,47 @@ export async function dismissNotification(notifId, userId) {
 }
 
 /**
+ * Get count of unread notifications for a user.
+ */
+export async function fetchUnreadCount(userId) {
+  if (!userId) return 0;
+  try {
+    const list = await fetchMyNotifications(userId);
+    return list.filter((n) => !n.read).length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Mark all notifications as read for a user (called when opening Notification tab).
+ */
+export async function markAllAsRead(userId) {
+  if (!userId) return;
+
+  // 1. Update local storage first for instant UI response
+  const localList = readLocal(userId);
+  const updatedLocal = localList.map((n) => ({ ...n, read: true }));
+  writeLocal(userId, updatedLocal);
+  window.dispatchEvent(new Event('user_notif_update'));
+
+  // 2. Update Supabase table if configured
+  if (isSupabaseConfigured()) {
+    try {
+      const { error } = await supabase
+        .from('user_notifications')
+        .update({ read: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+      if (error) console.error('[userNotifService] markAllAsRead error:', error.message);
+    } catch (err) {
+      console.error('[userNotifService] markAllAsRead threw:', err.message);
+    }
+  }
+}
+
+
+/**
  * Delete ALL notifications whose ref_id matches (used when content is deleted).
  * - Suggestion deleted  → pass the suggestion id
  * - Confusion post deleted → pass the post id
