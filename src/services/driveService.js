@@ -70,18 +70,20 @@ export function startAdminGoogleAuth() {
 export async function exchangeAuthCode(code) {
   const clientId = getClientId();
   const clientSecret = getClientSecret();
-  if (!clientId || !clientSecret) {
-    throw new Error('Google OAuth credentials (Client ID and Client Secret) are not configured.');
+  if (!clientId) {
+    throw new Error('Google OAuth Client ID is not configured.');
   }
   const redirectUri = getOAuthRedirectUri();
 
   const bodyParams = new URLSearchParams({
     code,
     client_id: clientId,
-    client_secret: clientSecret,
     redirect_uri: redirectUri,
     grant_type: 'authorization_code',
   });
+  if (clientSecret) {
+    bodyParams.append('client_secret', clientSecret);
+  }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -107,17 +109,19 @@ export async function refreshAdminAccessToken() {
 
   const clientId = getClientId();
   const clientSecret = getClientSecret();
-  if (!clientId || !clientSecret) {
-    console.error('Google OAuth credentials (Client ID and Client Secret) are missing for refresh.');
+  if (!clientId) {
+    console.error('Google OAuth Client ID is missing for refresh.');
     return '';
   }
 
   const bodyParams = new URLSearchParams({
     client_id: clientId,
-    client_secret: clientSecret,
     refresh_token: adminRefreshToken,
     grant_type: 'refresh_token',
   });
+  if (clientSecret) {
+    bodyParams.append('client_secret', clientSecret);
+  }
 
   try {
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -388,27 +392,12 @@ export async function countFolderItems(folderId, apiKey) {
   }
 }
 
-/**
- * Gets an OAuth access token strictly from the admin refresh token.
- * Service accounts CANNOT upload to regular Drive folders (no storage quota),
- * so uploads must always use the admin's delegated OAuth token.
- * Throws a user-friendly error if OAuth is not configured.
- */
 async function getOAuthTokenForUpload() {
-  // If we already have a valid cached token from admin OAuth, reuse it
-  if (currentAccessToken && Date.now() < tokenExpiryTime && adminRefreshToken) {
-    return currentAccessToken;
-  }
+  const token = await ensureServiceAccountToken();
+  if (token) return token;
 
-  // Try to refresh using the admin's refresh token
-  if (adminRefreshToken) {
-    const token = await refreshAdminAccessToken();
-    if (token) return token;
-  }
-
-  // No OAuth token available — service account cannot be used for uploads
   throw new Error(
-    'Google Drive upload requires Admin OAuth authorization. ' +
+    'Google Drive upload requires Admin OAuth authorization or Service Account setup. ' +
     'Please ask your admin to connect their Google account in the Admin Panel ' +
     '(Admin → "Connect Google Account for Uploads" button).'
   );
