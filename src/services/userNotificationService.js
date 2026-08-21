@@ -79,8 +79,9 @@ async function insertMany(rows) {
         const list = readLocal(row.user_id);
         list.unshift(row);
         writeLocal(row.user_id, list);
+        // Dispatch with payload so App.jsx can fire device push for the correct user
+        window.dispatchEvent(new CustomEvent('user_notif_update', { detail: row }));
       });
-      window.dispatchEvent(new Event('user_notif_update'));
     }
   } catch (err) {
     console.error('[userNotifService] insertMany threw:', err.message);
@@ -89,8 +90,8 @@ async function insertMany(rows) {
       const list = readLocal(row.user_id);
       list.unshift(row);
       writeLocal(row.user_id, list);
+      window.dispatchEvent(new CustomEvent('user_notif_update', { detail: row }));
     });
-    window.dispatchEvent(new Event('user_notif_update'));
   }
 }
 
@@ -152,11 +153,12 @@ export async function sendSuggestionNotification({ actor, examId, examName, sugg
 
     if (!isSupabaseConfigured()) {
       recipients.forEach((s) => {
+        const row = buildNotif({ userId: s.id, type: 'suggestion', title, examId, examName, refId: suggId, sender: actor });
         const list = readLocal(s.id);
-        list.unshift(buildNotif({ userId: s.id, type: 'suggestion', title, examId, examName, refId: suggId, sender: actor }));
+        list.unshift(row);
         writeLocal(s.id, list);
+        window.dispatchEvent(new CustomEvent('user_notif_update', { detail: row }));
       });
-      window.dispatchEvent(new Event('user_notif_update'));
       return;
     }
 
@@ -184,11 +186,12 @@ export async function sendConfusionPostNotification({ actor, examId, examName, p
 
     if (!isSupabaseConfigured()) {
       recipients.forEach((s) => {
+        const row = buildNotif({ userId: s.id, type: 'confusion_post', title, examId, examName, refId: postId, sender: actor });
         const list = readLocal(s.id);
-        list.unshift(buildNotif({ userId: s.id, type: 'confusion_post', title, examId, examName, refId: postId, sender: actor }));
+        list.unshift(row);
         writeLocal(s.id, list);
+        window.dispatchEvent(new CustomEvent('user_notif_update', { detail: row }));
       });
-      window.dispatchEvent(new Event('user_notif_update'));
       return;
     }
 
@@ -216,10 +219,11 @@ export async function sendConfusionReplyNotification({ actor, postAuthorId, post
     const title = `${actor.name} replied to your confusion in ${examName || 'an exam'}`;
 
     if (!isSupabaseConfigured()) {
+      const row = buildNotif({ userId: postAuthorId, type: 'confusion_reply', title, examId, examName, refId: postId, sender: actor });
       const list = readLocal(postAuthorId);
-      list.unshift(buildNotif({ userId: postAuthorId, type: 'confusion_reply', title, examId, examName, refId: postId, sender: actor }));
+      list.unshift(row);
       writeLocal(postAuthorId, list);
-      window.dispatchEvent(new Event('user_notif_update'));
+      window.dispatchEvent(new CustomEvent('user_notif_update', { detail: row }));
       return;
     }
 
@@ -273,11 +277,11 @@ export async function fetchUnreadCount(userId) {
 export async function markAllAsRead(userId) {
   if (!userId) return;
 
-  // 1. Update local storage first for instant UI response
+  // 1. Update local storage immediately (no event dispatch — App.jsx manages badge state directly
+  //    to avoid re-fetching from Supabase before the async UPDATE below completes)
   const localList = readLocal(userId);
   const updatedLocal = localList.map((n) => ({ ...n, read: true }));
   writeLocal(userId, updatedLocal);
-  window.dispatchEvent(new Event('user_notif_update'));
 
   // 2. Update Supabase table if configured
   if (isSupabaseConfigured()) {

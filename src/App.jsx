@@ -29,7 +29,7 @@ import { setAccessToken, setServiceAccountConfig, setAdminRefreshToken, exchange
 import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
-import { initExamNotifications } from './services/notificationService';
+import { initExamNotifications, showUserActivityNotification } from './services/notificationService';
 import { fetchBroadcastNotifications } from './services/broadcastService';
 import { fetchUnreadCount, markAllAsRead, subscribeToMyNotifications } from './services/userNotificationService';
 
@@ -377,14 +377,24 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     if (!currentUser?.id) return;
     updateUnreadCount();
     const unsub = subscribeToMyNotifications(currentUser.id, (newNotif) => {
-      updateUnreadCount();
-      // Trigger OS push notification on device when new notification arrives
-      if (newNotif && newNotif.title && (!newNotif.user_id || newNotif.user_id === currentUser.id)) {
-        showUserActivityNotification(
-          newNotif.title,
-          newNotif.exam_name || newNotif.body || '',
-          newNotif.action_url || '/'
-        ).catch(() => {});
+      if (newNotif && newNotif.id) {
+        // A new notification row arrived — increment badge directly (no re-fetch race)
+        // But only if we're not currently on the notification tab
+        setUnreadNotifCount((prev) => {
+          const isOnNotifTab = document.querySelector('[id="nav-announcement"].active') !== null;
+          return isOnNotifTab ? 0 : prev + 1;
+        });
+        // Fire OS device push for this user
+        if (!newNotif.user_id || newNotif.user_id === currentUser.id) {
+          showUserActivityNotification(
+            newNotif.title,
+            newNotif.exam_name || newNotif.body || '',
+            newNotif.action_url || '/'
+          ).catch(() => {});
+        }
+      } else {
+        // Generic change (delete / update) — re-fetch to sync badge accurately
+        updateUnreadCount();
       }
     });
     return () => unsub();
