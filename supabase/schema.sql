@@ -227,3 +227,62 @@ CREATE POLICY "confusion_replies_delete" ON confusion_replies FOR DELETE USING (
 -- ALTER PUBLICATION supabase_realtime ADD TABLE confusion_posts;
 -- ALTER PUBLICATION supabase_realtime ADD TABLE confusion_replies;
 
+-- ── Per-user Activity Notifications ─────────────────────────────────────────
+-- Stores targeted notifications for each user:
+--   type = 'suggestion'        → someone added a suggestion (all users except actor)
+--   type = 'confusion_post'    → someone posted a confusion (all users except actor)
+--   type = 'confusion_reply'   → someone replied to a confusion (only the post author)
+
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id           TEXT PRIMARY KEY,
+  user_id      UUID NOT NULL,        -- recipient student id
+  type         TEXT NOT NULL,        -- 'suggestion' | 'confusion_post' | 'confusion_reply'
+  title        TEXT NOT NULL,        -- display title
+  body         TEXT,                 -- optional extra body text
+  exam_id      TEXT,                 -- for deep-link ?e=
+  exam_name    TEXT,
+  ref_id       TEXT,                 -- suggestion id / post id
+  action_url   TEXT,                 -- full deep-link URL e.g. /?tab=calendar&e=...&s=...
+  sender_id    TEXT,
+  sender_name  TEXT,
+  sender_photo TEXT,
+  read         BOOLEAN DEFAULT FALSE,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_notifications_user_idx ON user_notifications (user_id, created_at DESC);
+
+ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_notifs_select" ON user_notifications;
+DROP POLICY IF EXISTS "user_notifs_insert" ON user_notifications;
+DROP POLICY IF EXISTS "user_notifs_delete" ON user_notifications;
+
+-- Each user reads only their own notifications
+CREATE POLICY "user_notifs_select" ON user_notifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Any logged-in user can send a notification to another user
+CREATE POLICY "user_notifs_insert" ON user_notifications
+  FOR INSERT WITH CHECK (true);
+
+-- User can only delete their own notifications (dismiss)
+-- OR delete any notification that references a piece of content they deleted (cleanup)
+CREATE POLICY "user_notifs_delete" ON user_notifications
+  FOR DELETE USING (true);
+
+-- Enable realtime so the notification feed updates live
+ALTER PUBLICATION supabase_realtime ADD TABLE user_notifications;
+
+-- ── RPC: delete notifications by ref_id (content cleanup) ───────────────────
+-- Called when a user deletes a suggestion or confusion post so that
+-- all related notifications (across all recipients) are also cleaned up.
+-- SECURITY DEFINER bypasses RLS so it can delete other users' rows.
+CREATE OR REPLACE FUNCTION delete_notifications_by_ref(p_ref_id TEXT)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  DELETE FROM user_notifications WHERE ref_id = p_ref_id;
+$$;

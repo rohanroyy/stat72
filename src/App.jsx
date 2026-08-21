@@ -947,7 +947,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     }
 
     if (activeTab === 'announcement') {
-      return <AnnouncementPage />;
+      return <AnnouncementPage currentUser={currentUser} />;
     }
   };
 

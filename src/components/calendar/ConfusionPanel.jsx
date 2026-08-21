@@ -6,6 +6,9 @@ import {
   deleteConfusionImages, subscribeToConfusions,
   formatRelativeTime,
 } from '../../services/confusionService';
+import { sendConfusionPostNotification, sendConfusionReplyNotification } from '../../services/userNotificationService';
+import { deleteNotificationsByRef } from '../../services/userNotificationService';
+import { showUserActivityNotification } from '../../services/notificationService';
 
 // ── Avatar ─────────────────────────────────────────────────────────────────────
 function Avatar({ src, name, size = 32 }) {
@@ -378,14 +381,43 @@ export default function ConfusionPanel({
         if (activePost?.id === editingPost.id) {
           setActivePost(prev => ({ ...prev, text: text || null, images }));
         }
-        await loadPosts(true); // silent
+        await loadPosts(true);
       } else if (composerMode === 'post') {
-        await createPost(examId, { text, images }, currentUser);
-        await loadPosts(true); // silent
+        const newPost = await createPost(examId, { text, images }, currentUser);
+        await loadPosts(true);
+        // Notify all other users — fire-and-forget
+        sendConfusionPostNotification({
+          actor:    currentUser,
+          examId,
+          examName: examName || 'an exam',
+          postId:   newPost?.id || null,
+        }).catch(() => {});
+        showUserActivityNotification(
+          `${currentUser.name} posted a confusion`,
+          examName || 'an exam',
+          `/?tab=calendar&e=${encodeURIComponent(examId)}&c=${encodeURIComponent(newPost?.id || '')}`,
+        ).catch(() => {});
       } else {
+        // Reply mode
+        const postAuthorId   = activePost?.author_id;
+        const postAuthorName = activePost?.author_name;
         await createReply(activePost.id, { text, images }, currentUser);
-        await loadReplies(activePost.id, true); // silent reply refresh
-        await loadPosts(true); // silent post refresh (reply count)
+        await loadReplies(activePost.id, true);
+        await loadPosts(true);
+        // Notify only the post author — fire-and-forget
+        sendConfusionReplyNotification({
+          actor:          currentUser,
+          postAuthorId,
+          postAuthorName,
+          examId,
+          examName:       examName || 'an exam',
+          postId:         activePost.id,
+        }).catch(() => {});
+        showUserActivityNotification(
+          `${currentUser.name} replied to a confusion`,
+          examName || 'an exam',
+          `/?tab=calendar&e=${encodeURIComponent(examId)}&c=${encodeURIComponent(activePost.id || '')}`,
+        ).catch(() => {});
       }
     } catch (err) {
       console.error('Composer submit failed:', err);
@@ -401,13 +433,16 @@ export default function ConfusionPanel({
     setDeleteLoading(true);
     try {
       if (deleteTarget.type === 'post') {
+        const deletedPostId = deleteTarget.item.id;
         await deleteConfusionImages(deleteTarget.item.images || []);
-        await deletePost(examId, deleteTarget.item.id);
+        await deletePost(examId, deletedPostId);
         await loadPosts(true);
-        if (activePost?.id === deleteTarget.item.id) {
+        if (activePost?.id === deletedPostId) {
           setView('list');
           setActivePost(null);
         }
+        // Clean up all notifications related to this post (fire-and-forget)
+        deleteNotificationsByRef(deletedPostId).catch(() => {});
       } else {
         await deleteConfusionImages(deleteTarget.item.images || []);
         await deleteReply(deleteTarget.item.post_id, deleteTarget.item.id);

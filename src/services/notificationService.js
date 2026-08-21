@@ -233,3 +233,42 @@ export function updateExamNotifications(exams = []) {
   syncExamsToSW(relevant);
   scheduleOrFireNow(relevant);
 }
+
+/**
+ * Show a device push notification for a user-activity event
+ * (suggestion added, confusion posted, confusion replied, etc.).
+ * Clicking the OS notification opens `actionUrl` as a deep-link.
+ *
+ * @param {string} title      - e.g. "Rahim added a suggestion"
+ * @param {string} body       - e.g. "Math Final Exam"
+ * @param {string} actionUrl  - e.g. "/?tab=calendar&e=...&s=..."
+ */
+export async function showUserActivityNotification(title, body, actionUrl) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+
+  const tag = `activity_${Date.now()}`;
+  const options = {
+    body:              body || '',
+    tag,
+    icon:              '/pwa-192x192.png',
+    badge:             '/favicon.png',
+    requireInteraction: false,
+    data:              { url: actionUrl || '/' },
+  };
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      return;
+    } catch (_) { /* fall through */ }
+  }
+
+  // Fallback: plain Notification API (no click-to-navigate on iOS Safari)
+  const n = new Notification(title, options);
+  n.onclick = () => {
+    window.focus();
+    if (actionUrl) window.location.href = actionUrl;
+  };
+}

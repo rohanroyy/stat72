@@ -12,6 +12,9 @@ import {
 } from '../../services/suggestionService';
 import { fetchPostCount, subscribeToConfusions } from '../../services/confusionService';
 import { getFileType, deleteFileFromDrive } from '../../services/driveService';
+import { sendSuggestionNotification } from '../../services/userNotificationService';
+import { deleteNotificationsByRef } from '../../services/userNotificationService';
+import { showUserActivityNotification } from '../../services/notificationService';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -145,6 +148,19 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         updated = await editSuggestion(exam.id, editingSuggestion.id, { text, attachments });
       } else {
         updated = await addSuggestion(exam.id, { text, attachments }, currentUser);
+        // Notify all other users about the new suggestion (fire-and-forget)
+        const examName = exam?.subject || 'an exam';
+        sendSuggestionNotification({
+          actor:    currentUser,
+          examId:   exam.id,
+          examName,
+          suggId:   Array.isArray(updated) ? updated.find(s => s.uploader_id === currentUser.id)?.id : null,
+        }).catch(() => {});
+        showUserActivityNotification(
+          `${currentUser.name} added a suggestion`,
+          examName,
+          `/?tab=calendar&e=${encodeURIComponent(exam.id)}`,
+        ).catch(() => {});
       }
       setSuggestions(updated);
     } catch (err) {
@@ -158,9 +174,6 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      // Collect attachments that were uploaded from device (uploaded: true)
-      // These files live in the admin's Drive upload folder and should be cleaned up.
-      // Drive-picker selections are NOT deleted — they belong to the user's existing Drive.
       const attachmentList = Array.isArray(deleteConfirm.attachment)
         ? deleteConfirm.attachment
         : deleteConfirm.attachment
@@ -175,8 +188,12 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         );
       }
 
-      const updated = await deleteSuggestion(exam.id, deleteConfirm.id);
+      const deletedId = deleteConfirm.id;
+      const updated = await deleteSuggestion(exam.id, deletedId);
       setSuggestions(updated);
+
+      // Clean up all notifications related to this suggestion (fire-and-forget)
+      deleteNotificationsByRef(deletedId).catch(() => {});
     } catch (err) {
       console.error('Failed to delete suggestion:', err);
     } finally {
