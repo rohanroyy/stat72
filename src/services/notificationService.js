@@ -245,30 +245,42 @@ export function updateExamNotifications(exams = []) {
  */
 export async function showUserActivityNotification(title, body, actionUrl) {
   if (!('Notification' in window)) return;
+
+  if (Notification.permission === 'default') {
+    try {
+      await Notification.requestPermission();
+    } catch (_) {}
+  }
+
   if (Notification.permission !== 'granted') return;
 
-  const tag = `activity_${Date.now()}`;
+  const tag = `activity_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const options = {
     body:              body || '',
     tag,
     icon:              '/pwa-192x192.png',
     badge:             '/favicon.png',
-    requireInteraction: false,
+    requireInteraction: true,
     data:              { url: actionUrl || '/' },
   };
 
   if ('serviceWorker' in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title, options);
-      return;
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, options);
+        return;
+      }
     } catch (_) { /* fall through */ }
   }
 
-  // Fallback: plain Notification API (no click-to-navigate on iOS Safari)
-  const n = new Notification(title, options);
-  n.onclick = () => {
-    window.focus();
-    if (actionUrl) window.location.href = actionUrl;
-  };
+  try {
+    const n = new Notification(title, options);
+    n.onclick = () => {
+      window.focus();
+      if (actionUrl) window.location.href = actionUrl;
+    };
+  } catch (err) {
+    console.error('[notificationService] Window Notification error:', err);
+  }
 }

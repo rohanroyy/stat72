@@ -339,7 +339,7 @@ export async function deleteNotificationsByRef(refId) {
  */
 export function subscribeToMyNotifications(userId, onChange) {
   // Always listen to the localStorage event (covers fallback + same-device updates)
-  const localHandler = () => onChange();
+  const localHandler = (e) => onChange(e?.detail);
   window.addEventListener('user_notif_update', localHandler);
 
   if (!isSupabaseConfigured() || !userId) {
@@ -350,6 +350,12 @@ export function subscribeToMyNotifications(userId, onChange) {
   try {
     channel = supabase
       .channel(`user_notifs_${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_notifications',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => onChange(payload.new))
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

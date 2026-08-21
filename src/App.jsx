@@ -376,18 +376,26 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   useEffect(() => {
     if (!currentUser?.id) return;
     updateUnreadCount();
-    const unsub = subscribeToMyNotifications(currentUser.id, () => {
+    const unsub = subscribeToMyNotifications(currentUser.id, (newNotif) => {
       updateUnreadCount();
+      // Trigger OS push notification on device when new notification arrives
+      if (newNotif && newNotif.title && (!newNotif.user_id || newNotif.user_id === currentUser.id)) {
+        showUserActivityNotification(
+          newNotif.title,
+          newNotif.exam_name || newNotif.body || '',
+          newNotif.action_url || '/'
+        ).catch(() => {});
+      }
     });
     return () => unsub();
   }, [currentUser?.id, updateUnreadCount]);
 
   useEffect(() => {
-    if (activeTab === 'announcement' && currentUser?.id && unreadNotifCount > 0) {
+    if (activeTab === 'announcement' && currentUser?.id) {
       markAllAsRead(currentUser.id);
       setUnreadNotifCount(0);
     }
-  }, [activeTab, currentUser?.id, unreadNotifCount]);
+  }, [activeTab, currentUser?.id]);
 
   // Load topper IDs on boot
   useEffect(() => {

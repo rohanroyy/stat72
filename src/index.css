@@ -352,24 +352,29 @@ a:focus-visible {
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), color 300ms ease;
 }
 
-/* Badge dot on navigation bar icon */
+/* Badge number on navigation bar icon — crisp numeric pill, no animation */
 .capsule-notif-badge {
   position: absolute;
-  top: -2px;
-  right: -3px;
-  width: 9px;
-  height: 9px;
+  top: -5px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   background-color: var(--accent, #FF6B00);
-  border: 2px solid #141416;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(255, 107, 0, 0.7);
-  animation: badgePulse 2s infinite;
-}
-
-@keyframes badgePulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(255, 107, 0, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0); }
+  color: #FFFFFF;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid #141416;
+  border-radius: 999px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Hide navigation bar on ExamDetailPanel to avoid overlapping */

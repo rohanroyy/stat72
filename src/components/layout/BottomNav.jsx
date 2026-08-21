@@ -79,7 +79,11 @@ export default function BottomNav({ activeTab = 'dashboard', onChangeTab, unread
             >
               <span className="capsule-icon-wrap" style={{ position: 'relative' }}>
                 {tab.icon}
-                {tab.hasBadge && <span className="capsule-notif-badge" />}
+                {tab.hasBadge && (
+                  <span className="capsule-notif-badge">
+                    {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                  </span>
+                )}
               </span>
               <span className="capsule-label-wrap">{tab.label}</span>
             </button>
