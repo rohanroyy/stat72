@@ -148,18 +148,29 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
         updated = await editSuggestion(exam.id, editingSuggestion.id, { text, attachments });
       } else {
         updated = await addSuggestion(exam.id, { text, attachments }, currentUser);
-        // Notify all other users about the new suggestion (fire-and-forget)
+        // Find the id of the newly added suggestion (most recent by this user)
         const examName = exam?.subject || 'an exam';
+        let newSuggId = null;
+        if (Array.isArray(updated) && updated.length > 0) {
+          const myItems = updated.filter(s => s.uploader_id === currentUser.id);
+          if (myItems.length > 0) {
+            // Sort by created_at desc and take the newest
+            myItems.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            newSuggId = myItems[0].id;
+          }
+        }
+        // Notify all other users about the new suggestion (fire-and-forget)
         sendSuggestionNotification({
           actor:    currentUser,
           examId:   exam.id,
           examName,
-          suggId:   Array.isArray(updated) ? updated.find(s => s.uploader_id === currentUser.id)?.id : null,
+          suggId:   newSuggId,
         }).catch(() => {});
+        // Fire device push notification only (not visible to the actor themselves)
         showUserActivityNotification(
+          `New suggestion in ${examName}`,
           `${currentUser.name} added a suggestion`,
-          examName,
-          `/?tab=calendar&e=${encodeURIComponent(exam.id)}`,
+          `/?tab=calendar&e=${encodeURIComponent(exam.id)}${newSuggId ? `&s=${encodeURIComponent(newSuggId)}` : ''}`,
         ).catch(() => {});
       }
       setSuggestions(updated);

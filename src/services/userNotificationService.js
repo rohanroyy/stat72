@@ -72,9 +72,25 @@ async function insertMany(rows) {
   if (!rows.length) return;
   try {
     const { error } = await supabase.from('user_notifications').insert(rows);
-    if (error) console.error('[userNotifService] insert error:', error.message);
+    if (error) {
+      console.error('[userNotifService] Supabase insert error — if this says "relation does not exist", run the user_notifications SQL in your Supabase dashboard:', error.message);
+      // Fallback: store in localStorage so notifications still appear in-app
+      rows.forEach((row) => {
+        const list = readLocal(row.user_id);
+        list.unshift(row);
+        writeLocal(row.user_id, list);
+      });
+      window.dispatchEvent(new Event('user_notif_update'));
+    }
   } catch (err) {
-    console.error('[userNotifService] insert threw:', err.message);
+    console.error('[userNotifService] insertMany threw:', err.message);
+    // Fallback: store in localStorage
+    rows.forEach((row) => {
+      const list = readLocal(row.user_id);
+      list.unshift(row);
+      writeLocal(row.user_id, list);
+    });
+    window.dispatchEvent(new Event('user_notif_update'));
   }
 }
 
@@ -86,8 +102,11 @@ async function insertMany(rows) {
 export async function fetchMyNotifications(userId) {
   if (!userId) return [];
 
+  // Always include any locally-stored notifications (fallback + offline)
+  const localItems = readLocal(userId);
+
   if (!isSupabaseConfigured()) {
-    return readLocal(userId);
+    return localItems;
   }
 
   try {
@@ -97,11 +116,22 @@ export async function fetchMyNotifications(userId) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(60);
-    if (error) throw new Error(error.message);
-    return data || [];
+
+    if (error) {
+      // Table may not exist yet — return local data silently
+      console.warn('[userNotifService] fetchMyNotifications (using local fallback):', error.message);
+      return localItems;
+    }
+
+    const remoteItems = data || [];
+
+    // Merge: remote first, then any local-only items not in remote
+    const remoteIds = new Set(remoteItems.map((n) => n.id));
+    const localOnly = localItems.filter((n) => !remoteIds.has(n.id));
+    return [...remoteItems, ...localOnly];
   } catch (err) {
-    console.error('[userNotifService] fetchMyNotifications:', err.message);
-    return readLocal(userId);
+    console.warn('[userNotifService] fetchMyNotifications threw, using local:', err.message);
+    return localItems;
   }
 }
 
@@ -267,15 +297,17 @@ export async function deleteNotificationsByRef(refId) {
  * Returns an unsubscribe function.
  */
 export function subscribeToMyNotifications(userId, onChange) {
+  // Always listen to the localStorage event (covers fallback + same-device updates)
+  const localHandler = () => onChange();
+  window.addEventListener('user_notif_update', localHandler);
+
   if (!isSupabaseConfigured() || !userId) {
-    // Local-storage fallback: listen to our custom event
-    const handler = () => onChange();
-    window.addEventListener('user_notif_update', handler);
-    return () => window.removeEventListener('user_notif_update', handler);
+    return () => window.removeEventListener('user_notif_update', localHandler);
   }
 
+  let channel = null;
   try {
-    const channel = supabase
+    channel = supabase
       .channel(`user_notifs_${userId}`)
       .on('postgres_changes', {
         event: '*',
@@ -284,9 +316,14 @@ export function subscribeToMyNotifications(userId, onChange) {
         filter: `user_id=eq.${userId}`,
       }, () => onChange())
       .subscribe();
-
-    return () => supabase.removeChannel(channel);
   } catch {
-    return () => {};
+    // Supabase realtime not available — localStorage event handler still active
   }
+
+  return () => {
+    window.removeEventListener('user_notif_update', localHandler);
+    if (channel) {
+      try { supabase.removeChannel(channel); } catch { /* ignore */ }
+    }
+  };
 }

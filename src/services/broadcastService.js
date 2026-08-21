@@ -14,11 +14,12 @@ export async function fetchAllStudents() {
   }
   const { data, error } = await supabase
     .from("students")
-    .select("id, name, registration_number, class_roll, session")
+    .select("id, name, registration_number, class_roll, session, profile_picture")
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return data || [];
 }
+
 
 export async function fetchBroadcastNotifications() {
   if (!isSupabaseConfigured()) {
