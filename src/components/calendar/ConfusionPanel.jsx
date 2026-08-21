@@ -6,9 +6,7 @@ import {
   deleteConfusionImages, subscribeToConfusions,
   formatRelativeTime,
 } from '../../services/confusionService';
-import { sendConfusionPostNotification, sendConfusionReplyNotification } from '../../services/userNotificationService';
-import { deleteNotificationsByRef } from '../../services/userNotificationService';
-import { showUserActivityNotification } from '../../services/notificationService';
+import { sendConfusionPostNotification, sendConfusionReplyNotification, deleteNotificationsByRef } from '../../services/userNotificationService';
 
 // ── Avatar ─────────────────────────────────────────────────────────────────────
 function Avatar({ src, name, size = 32 }) {

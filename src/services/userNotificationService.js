@@ -342,8 +342,8 @@ export async function deleteNotificationsByRef(refId) {
  * Returns an unsubscribe function.
  */
 export function subscribeToMyNotifications(userId, onChange) {
-  // Always listen to the localStorage event (covers fallback + same-device updates)
-  const localHandler = (e) => onChange(e?.detail);
+  // Always listen to the localStorage CustomEvent (covers fallback + same-device updates)
+  const localHandler = (e) => onChange(e?.detail || null);
   window.addEventListener('user_notif_update', localHandler);
 
   if (!isSupabaseConfigured() || !userId) {
@@ -354,18 +354,26 @@ export function subscribeToMyNotifications(userId, onChange) {
   try {
     channel = supabase
       .channel(`user_notifs_${userId}`)
+      // INSERT: pass full payload so push notification can fire
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'user_notifications',
         filter: `user_id=eq.${userId}`,
       }, (payload) => onChange(payload.new))
+      // DELETE / UPDATE: pass null so badge re-syncs without push
       .on('postgres_changes', {
-        event: '*',
+        event: 'DELETE',
         schema: 'public',
         table: 'user_notifications',
         filter: `user_id=eq.${userId}`,
-      }, () => onChange())
+      }, () => onChange(null))
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'user_notifications',
+        filter: `user_id=eq.${userId}`,
+      }, () => onChange(null))
       .subscribe();
   } catch {
     // Supabase realtime not available — localStorage event handler still active
@@ -378,3 +386,4 @@ export function subscribeToMyNotifications(userId, onChange) {
     }
   };
 }
+

@@ -20,6 +20,21 @@ self.addEventListener("message", (event) => {
   if (event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+  // Triggered by App.jsx when a new user_notifications row arrives
+  // The SW shows the OS notification — works reliably in both foreground & background
+  if (event.data.type === "SHOW_NOTIFICATION") {
+    const { title, body, url, tag } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(title || "New notification", {
+        body: body || "",
+        tag: tag || `notif_${Date.now()}`,
+        icon: "/pwa-192x192.png",
+        badge: "/favicon.png",
+        requireInteraction: false,
+        data: { url: url || "/" },
+      })
+    );
+  }
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -45,4 +60,5 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+
 

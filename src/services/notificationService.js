@@ -60,27 +60,34 @@ function parseSubject(exam) {
 async function showNotification(title, body, tag) {
   if (Notification.permission !== 'granted') return;
 
-  const options = {
+  // Primary: post to SW — most reliable on mobile PWAs
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.active) {
+        reg.active.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title,
+          body,
+          url: '/',
+          tag,
+        });
+        return;
+      }
+    } catch (_) { /* fall through */ }
+  }
+
+  // Fallback: plain Notification API
+  new Notification(title, {
     body,
     tag,
     icon: '/pwa-192x192.png',
     badge: '/favicon.png',
     requireInteraction: false,
     data: { url: '/' },
-  };
-
-  // Prefer SW notification — stays visible even when the tab is in background
-  if ('serviceWorker' in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title, options);
-      return;
-    } catch (_) { /* fall through */ }
-  }
-
-  // Fallback: plain Notification API
-  new Notification(title, options);
+  });
 }
+
 
 // ── Build and fire all due reminders ─────────────────────────────────────────
 
@@ -246,41 +253,48 @@ export function updateExamNotifications(exams = []) {
 export async function showUserActivityNotification(title, body, actionUrl) {
   if (!('Notification' in window)) return;
 
+  // Request permission if not yet decided
   if (Notification.permission === 'default') {
-    try {
-      await Notification.requestPermission();
-    } catch (_) {}
+    try { await Notification.requestPermission(); } catch (_) {}
   }
-
   if (Notification.permission !== 'granted') return;
 
   const tag = `activity_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  const options = {
-    body:              body || '',
-    tag,
-    icon:              '/pwa-192x192.png',
-    badge:             '/favicon.png',
-    requireInteraction: true,
-    data:              { url: actionUrl || '/' },
-  };
 
+  // ── Primary: post SHOW_NOTIFICATION to SW → SW calls self.registration.showNotification()
+  // This is the most reliable path on mobile PWAs (works in both foreground and background)
   if ('serviceWorker' in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;
-      if (reg && reg.showNotification) {
-        await reg.showNotification(title, options);
+      if (reg && reg.active) {
+        reg.active.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: title || 'New notification',
+          body: body || '',
+          url: actionUrl || '/',
+          tag,
+        });
         return;
       }
     } catch (_) { /* fall through */ }
   }
 
+  // ── Fallback: plain Notification API (no service worker)
   try {
-    const n = new Notification(title, options);
+    const n = new Notification(title, {
+      body: body || '',
+      tag,
+      icon: '/pwa-192x192.png',
+      badge: '/favicon.png',
+      requireInteraction: true,
+      data: { url: actionUrl || '/' },
+    });
     n.onclick = () => {
       window.focus();
       if (actionUrl) window.location.href = actionUrl;
     };
   } catch (err) {
-    console.error('[notificationService] Window Notification error:', err);
+    console.error('[notificationService] Notification error:', err);
   }
 }
+

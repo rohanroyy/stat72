@@ -12,9 +12,7 @@ import {
 } from '../../services/suggestionService';
 import { fetchPostCount, subscribeToConfusions } from '../../services/confusionService';
 import { getFileType, deleteFileFromDrive } from '../../services/driveService';
-import { sendSuggestionNotification } from '../../services/userNotificationService';
-import { deleteNotificationsByRef } from '../../services/userNotificationService';
-import { showUserActivityNotification } from '../../services/notificationService';
+import { sendSuggestionNotification, deleteNotificationsByRef } from '../../services/userNotificationService';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -169,18 +167,14 @@ export default function ExamDetailPanel({ exam, currentUser, topperIds = [], fol
           }
         }
         // Notify all other users about the new suggestion (fire-and-forget)
+        // Device push notifications fire automatically on each recipient's device
+        // via subscribeToMyNotifications → App.jsx → showUserActivityNotification
         sendSuggestionNotification({
           actor:    currentUser,
           examId:   exam.id,
           examName,
           suggId:   newSuggId,
         }).catch(() => {});
-        // Fire device push notification only (not visible to the actor themselves)
-        showUserActivityNotification(
-          `New suggestion in ${examName}`,
-          `${currentUser.name} added a suggestion`,
-          `/?tab=calendar&e=${encodeURIComponent(exam.id)}${newSuggId ? `&s=${encodeURIComponent(newSuggId)}` : ''}`,
-        ).catch(() => {});
       }
       setSuggestions(updated);
     } catch (err) {
