@@ -13,6 +13,7 @@ import VideoViewer from './components/viewers/VideoViewer';
 import TelegramSetup from './components/telegram/TelegramSetup';
 import TelegramManager from './components/telegram/TelegramManager';
 import ExamCalendar from './components/calendar/ExamCalendar';
+import RoutinePage from './components/routine/RoutinePage';
 import AnnouncementPage from './components/announcement/AnnouncementPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -22,6 +23,7 @@ import ExplorePage from './components/explore/ExplorePage';
 import { DEFAULT_FOLDERS, getApiKey, setRuntimeApiKey, setRuntimeClientId, setRuntimeClientSecret } from './config/drive';
 import { getTelegramConfig, saveTelegramConfig, clearTelegramConfig } from './services/telegramService';
 import { fetchExams, saveExam as saveExamToStorage, deleteExam as deleteExamFromStorage, subscribeToExams } from './services/examService';
+import { fetchRoutine, saveRoutineItem, deleteRoutineItem, resetDefaultRoutine, subscribeToRoutine } from './services/routineService';
 import { fetchTopperIds } from './services/suggestionService';
 import { fetchFolders, saveAllFolders, subscribeToFolders } from './services/foldersService';
 import { saveGoogleApiKey, saveTelegramSettings, clearTelegramSettings, subscribeToSettings, fetchAppSettings, saveSuggestionUploadFolder, saveGoogleServiceAccount, saveGoogleRefreshToken, saveGoogleClientId, saveGoogleClientSecret } from './services/settingsService';
@@ -341,6 +343,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   });
 
   const [examsList, setExamsList] = useState(() => initialData?.exams || []);
+  const [routineList, setRoutineList] = useState([]);
   const [topperIds, setTopperIds] = useState([]);
   const [suggestionUploadFolder, setSuggestionUploadFolder] = useState(() => {
     return initialData?.settings?.suggestionUploadFolder || localStorage.getItem('bahattor_suggestion_upload_folder') || '';
@@ -578,6 +581,33 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     const updated = await deleteExamFromStorage(id);
     setExamsList(updated);
     try { new BroadcastChannel(EXAMS_BROADCAST_CHANNEL).postMessage({ type: 'exams_updated' }); } catch (_) {}
+    return updated;
+  }, []);
+
+  // Class Routine synchronization
+  useEffect(() => {
+    fetchRoutine().then(setRoutineList).catch(console.error);
+    const unsubRoutine = subscribeToRoutine((updated) => {
+      setRoutineList(updated);
+    });
+    return () => unsubRoutine();
+  }, []);
+
+  const handleSaveRoutineItem = useCallback(async (item) => {
+    const updated = await saveRoutineItem(item);
+    setRoutineList(updated);
+    return updated;
+  }, []);
+
+  const handleDeleteRoutineItem = useCallback(async (id) => {
+    const updated = await deleteRoutineItem(id);
+    setRoutineList(updated);
+    return updated;
+  }, []);
+
+  const handleResetRoutine = useCallback(async () => {
+    const updated = await resetDefaultRoutine();
+    setRoutineList(updated);
     return updated;
   }, []);
 
@@ -907,6 +937,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           examsList={examsList}
           onSaveExam={handleSaveExam}
           onDeleteExam={handleDeleteExam}
+          routineList={routineList}
+          onSaveRoutineItem={handleSaveRoutineItem}
+          onDeleteRoutineItem={handleDeleteRoutineItem}
+          onResetRoutine={handleResetRoutine}
           suggestionUploadFolder={suggestionUploadFolder}
           onSaveSuggestionUploadFolder={handleSaveSuggestionUploadFolder}
           googleServiceAccount={googleServiceAccount}
@@ -954,6 +988,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         <Dashboard
           student={currentUser}
           exams={examsList}
+          routineList={routineList}
           onProfileUpdate={handleProfileUpdate}
           onLogout={handleLogout}
           onChangeTab={navigateToTab}
@@ -965,6 +1000,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
       return (
         <ExamCalendar
           exams={examsList}
+          routineList={routineList}
           onAddExam={null} // No inline add button on calendar for general users
           currentUser={currentUser}
           topperIds={topperIds}
@@ -974,6 +1010,14 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
           initialExamId={deepLinkExamId}
           highlightSuggId={deepLinkSuggId}
           highlightConfusionId={deepLinkConfusionId}
+        />
+      );
+    }
+
+    if (activeTab === 'routine') {
+      return (
+        <RoutinePage
+          routineList={routineList}
         />
       );
     }
@@ -1006,7 +1050,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
 
   return (
     <div
-      className={`app-layout ${isLightTab ? 'light-theme-active' : ''}`}
+      className={`app-layout ${isLightTab ? 'light-theme-active' : ''} ${activeTab === 'routine' ? 'routine-tab-active' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -1050,12 +1094,20 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         </div>
       )}
 
-      <main className="app-content" style={{ paddingBottom: '24px' }}>
+      <main
+        className="app-content"
+        style={{
+          paddingBottom: activeTab === 'routine' ? 0 : '24px',
+          height: activeTab === 'routine' ? '100dvh' : undefined,
+          maxHeight: activeTab === 'routine' ? '100dvh' : undefined,
+          overflow: activeTab === 'routine' ? 'hidden' : undefined,
+        }}
+      >
         {renderContent()}
       </main>
 
-      {/* Navigation bar — hidden in Admin and when user is not logged in */}
-      {!isAdminHost && currentUser && (
+      {/* Navigation bar — hidden in Admin, when user is not logged in, or when a file viewer is open */}
+      {!isAdminHost && currentUser && !viewerFile && (
         <BottomNav
           activeTab={activeTab}
           unreadNotifCount={unreadNotifCount}

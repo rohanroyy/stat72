@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import GlimpseUploaderCard from '../glimpse/GlimpseUploaderCard';
 
+
 // Motivational quotes shown in header
 const QUOTES = [
   'Small steps today, big results tomorrow.',
@@ -13,7 +14,86 @@ const QUOTES = [
   'One page at a time, one day at a time.',
 ];
 
-export default function Dashboard({ student: initialStudent, exams = [], onProfileUpdate, onLogout, onChangeTab }) {
+// ── Routine helpers (mirrored from RoutinePage) ──────────────────────────────
+const ROUTINE_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const ROUTINE_TIMES = ['8.00-8.50', '9.00-9.50', '10.00-10.50', '11.00-11.50', '12.00-12.50', '1.00-2.00', '2.00-2.50', '3.00-3.50'];
+const SUBJECT_TONES = { 'H-401': 'blue', 'H-402': 'violet', 'H-403': 'violet', 'H-404': 'coral', 'H-405': 'gold', 'H-406': 'rose', 'H-407': 'blue', 'H-408': 'coral' };
+const DEFAULT_SCHEDULE = {
+  Sunday:    [null, null, { code: 'H 406', room: '402', teacher: 'JAK' }, { code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-405', room: '402', teacher: 'MI' }, 'break', null, null],
+  Monday:    [null, null, { code: 'H 402', room: '402', teacher: 'FA' }, { code: 'H 401', room: '436', teacher: 'BH' }, { code: 'H 401', room: '436', teacher: 'BH' }, 'break', { code: 'H 408', room: '401', teacher: 'JHK' }, { code: 'H 408', room: '401', teacher: 'JHK' }],
+  Tuesday:   [{ code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H 406', room: '406', teacher: 'JAK' }, { code: 'H 403', room: '427', teacher: 'FTZ' }, 'break', { code: 'H-407', room: '402', teacher: 'NS' }, null],
+  Wednesday: [null, { code: 'H 402', room: '402', teacher: 'FA' }, { code: 'H 408', room: '402', teacher: 'JHK' }, { code: 'H 401', room: '402', teacher: 'BH' }, { code: 'H 403', room: '427', teacher: 'FTZ' }, 'break', { code: 'H 403', room: '427', teacher: 'FTZ' }, null],
+  Thursday:  [null, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-407', room: '402', teacher: 'NS' }, { code: 'H-407', room: '402', teacher: 'NS' }, 'break', null, null],
+};
+
+const normCode = (v = '') => v.replace(/[\s-]/g, '').toLowerCase();
+const sameClass = (a, b) =>
+  a && b && a !== 'break' && b !== 'break' &&
+  normCode(a.code) === normCode(b.code) &&
+  String(a.room || '').replace(/^r\.?\s*/i, '').toLowerCase() === String(b.room || '').replace(/^r\.?\s*/i, '').toLowerCase() &&
+  String(a.teacher || '').toLowerCase() === String(b.teacher || '').toLowerCase();
+const toneFor = (code = '') =>
+  SUBJECT_TONES[Object.keys(SUBJECT_TONES).find(k => normCode(k) === normCode(code))] || 'coral';
+
+function mergeRoutineDay(slots) {
+  const result = [];
+  for (let i = 0; i < slots.length;) {
+    const item = slots[i];
+    if (!item) { i++; continue; }
+    if (item === 'break') { i++; continue; } // skip break for dashboard
+    let end = i;
+    while (end + 1 < slots.length && sameClass(item, slots[end + 1])) end++;
+    result.push({
+      ...item,
+      type: 'class',
+      start: i,
+      end,
+      time: end === i ? ROUTINE_TIMES[i] : `${ROUTINE_TIMES[i].split('-')[0]}-${ROUTINE_TIMES[end].split('-')[1]}`,
+      tone: toneFor(item.code),
+      periodCount: end - i + 1,
+    });
+    i = end + 1;
+  }
+  return result;
+}
+
+// Parse a time-slot string like '10.00-10.50' → [startMin, endMin]
+function parseRoutineTime(timeStr) {
+  return timeStr.split('-').map(part => {
+    const [rawH, rawM = '0'] = part.trim().split('.');
+    let h = Number(rawH);
+    if (h >= 1 && h <= 5) h += 12; // PM conversion for 1-5
+    return h * 60 + Number(rawM);
+  });
+}
+
+// Build schedule object from routineList (live DB) or fall back to DEFAULT_SCHEDULE
+function buildSchedule(routineList) {
+  if (!routineList || !routineList.length) return DEFAULT_SCHEDULE;
+  const startIndex = {
+    '08:00': 0, '8:00': 0, '8.00': 0,
+    '09:00': 1, '9:00': 1, '9.00': 1,
+    '10:00': 2, '10.00': 2,
+    '11:00': 3, '11.00': 3,
+    '12:00': 4, '12.00': 4,
+    '14:00': 6, '2:00': 6, '2.00': 6,
+    '15:00': 7, '3:00': 7, '3.00': 7,
+  };
+  const built = Object.fromEntries(ROUTINE_DAYS.map(day => [day, [null, null, null, null, null, 'break', null, null]]));
+  routineList.forEach(item => {
+    const idx = startIndex[String(item.startTime || item.start_time || '').trim()];
+    if (built[item.day] && idx !== undefined && idx !== 5) {
+      built[item.day][idx] = {
+        code: item.subject,
+        room: String(item.room || '').replace(/^r\.?\s*/i, ''),
+        teacher: item.teacher || '',
+      };
+    }
+  });
+  return built;
+}
+
+export default function Dashboard({ student: initialStudent, exams = [], routineList = [], onProfileUpdate, onLogout, onChangeTab }) {
   const [student, setStudent] = useState(initialStudent);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,6 +135,19 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
   // Pick a stable daily quote
   const quote = QUOTES[new Date().getDate() % QUOTES.length];
+
+  // ── Today's Classes — live clock for auto-dismissal ──────────────────────
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  });
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const n = new Date();
+      setNowMinutes(n.getHours() * 60 + n.getMinutes());
+    }, 30000); // refresh every 30 s
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     if (initialStudent) {
@@ -522,6 +615,9 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
 
       </div>
 
+      {/* ── Today's Classes ──────────────────────────────────────── */}
+      <TodaysClasses routineList={routineList} nowMinutes={nowMinutes} onChangeTab={onChangeTab} />
+
       {/* ── Glimpse Uploader Option Card ────────────────────────────── */}
       <GlimpseUploaderCard student={student} />
 
@@ -704,6 +800,129 @@ export default function Dashboard({ student: initialStudent, exams = [], onProfi
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Today's Classes Sub-Component ─────────────────────────────────────────────
+function TodaysClasses({ routineList, nowMinutes, onChangeTab }) {
+  const todayFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+  const isWeekend = !ROUTINE_DAYS.includes(todayFull);
+
+  const schedule = buildSchedule(routineList);
+  const allClasses = isWeekend ? [] : mergeRoutineDay(schedule[todayFull] || []);
+
+  // Filter out classes whose end time has fully passed
+  const upcomingClasses = allClasses.filter(cls => {
+    const [, endMin] = parseRoutineTime(cls.time);
+    return endMin > nowMinutes;
+  });
+
+  // Format time slot for display: '10.00-10.50' → '10:00 – 10:50'
+  const fmtTime = (timeStr) => {
+    return timeStr.replace('-', ' – ').replace(/\./g, ':');
+  };
+
+  // Friendly label
+  const isLive = (timeStr) => {
+    const [startMin, endMin] = parseRoutineTime(timeStr);
+    return nowMinutes >= startMin && nowMinutes < endMin;
+  };
+
+  const TONE_COLORS = {
+    blue:   { bg: '#1d4ed8', badge: '#93c5fd', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    violet: { bg: '#6d28d9', badge: '#c4b5fd', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    coral:  { bg: '#c2410c', badge: '#fca5a5', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    gold:   { bg: '#b45309', badge: '#fcd34d', text: '#ffffff', sub: 'rgba(255,255,255,0.80)' },
+    rose:   { bg: '#be185d', badge: '#f9a8d4', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+  };
+
+  return (
+    <div className="dash-section dash-today-classes-section">
+      <div className="dash-section-header">
+        <span className="dash-section-title">Today's classes</span>
+        {!isWeekend && (
+          <button className="dash-see-all-btn" onClick={() => onChangeTab && onChangeTab('routine')}>
+            Full routine
+          </button>
+        )}
+      </div>
+
+      {isWeekend ? (
+        <div className="dash-no-exams">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span>No classes on weekends — enjoy your break!</span>
+        </div>
+      ) : upcomingClasses.length === 0 ? (
+        <div className="dash-no-exams">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>All classes for today are done — great work!</span>
+        </div>
+      ) : (
+        <div className="dash-today-classes-scroll">
+          {upcomingClasses.map((cls, idx) => {
+            const live = isLive(cls.time);
+            const colors = TONE_COLORS[cls.tone] || TONE_COLORS.coral;
+            return (
+              <div
+                key={`${cls.code}-${idx}`}
+                className={`dash-class-card ${live ? 'dash-class-card-live' : ''}`}
+                style={{ background: colors.bg }}
+              >
+                {/* Live pulse badge */}
+                {live && (
+                  <div className="dash-class-live-badge">
+                    <span className="dash-class-live-dot" />
+                    NOW
+                  </div>
+                )}
+
+                {/* Subject code */}
+                <p className="dash-class-code" style={{ color: '#ffffff' }}>{cls.code}</p>
+
+                {/* Periods */}
+                {cls.periodCount > 1 && (
+                  <span className="dash-class-periods" style={{ color: colors.sub }}>
+                    {cls.periodCount} periods
+                  </span>
+                )}
+
+                {/* Time */}
+                <p className="dash-class-time" style={{ color: colors.text }}>{fmtTime(cls.time)}</p>
+
+                {/* Divider */}
+                <div className="dash-class-divider" style={{ borderColor: 'rgba(255,255,255,0.2)' }} />
+
+                {/* Teacher + Room */}
+                <div className="dash-class-meta">
+                  {cls.teacher && (
+                    <span className="dash-class-meta-item" style={{ color: colors.sub }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <circle cx="12" cy="7" r="4"/><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6"/>
+                      </svg>
+                      {cls.teacher}
+                    </span>
+                  )}
+                  {cls.room && (
+                    <span className="dash-class-meta-item" style={{ color: colors.sub }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+                      </svg>
+                      R. {cls.room}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

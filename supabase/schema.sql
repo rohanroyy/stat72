@@ -290,3 +290,74 @@ SET search_path = public
 AS $$
   DELETE FROM user_notifications WHERE ref_id = p_ref_id;
 $$;
+
+-- ── Class Routine Table ──────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS class_routine (
+  id TEXT PRIMARY KEY,
+  day TEXT NOT NULL,           -- 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
+  day_index INTEGER NOT NULL,  -- 0 for Sunday, 1 for Monday, etc.
+  time_slot TEXT NOT NULL,     -- '10.00-10.50', '11.00-11.50', etc.
+  start_time TEXT NOT NULL,    -- '10:00'
+  end_time TEXT NOT NULL,      -- '10:50'
+  subject TEXT NOT NULL,       -- 'H 406'
+  teacher TEXT DEFAULT '',     -- 'JAK'
+  room TEXT DEFAULT '',        -- 'R. 402'
+  notes TEXT DEFAULT '',
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS class_routine_day_idx ON class_routine (day_index, start_time);
+
+ALTER TABLE class_routine ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "class_routine_select" ON class_routine;
+DROP POLICY IF EXISTS "class_routine_insert" ON class_routine;
+DROP POLICY IF EXISTS "class_routine_update" ON class_routine;
+DROP POLICY IF EXISTS "class_routine_delete" ON class_routine;
+
+CREATE POLICY "class_routine_select" ON class_routine FOR SELECT USING (true);
+CREATE POLICY "class_routine_insert" ON class_routine FOR INSERT WITH CHECK (true);
+CREATE POLICY "class_routine_update" ON class_routine FOR UPDATE USING (true);
+CREATE POLICY "class_routine_delete" ON class_routine FOR DELETE USING (true);
+
+-- Enable realtime for live routine edits
+ALTER PUBLICATION supabase_realtime ADD TABLE class_routine;
+
+-- Seed default timetable
+INSERT INTO class_routine (id, day, day_index, time_slot, start_time, end_time, subject, teacher, room, sort_order)
+VALUES
+  -- Sunday
+  ('sun-3', 'Sunday', 0, '10.00-10.50', '10:00', '10:50', 'H 406', 'JAK', 'R. 402', 3),
+  ('sun-4', 'Sunday', 0, '11.00-11.50', '11:00', '11:50', 'H-405', 'MI', 'R. 402', 4),
+  ('sun-5', 'Sunday', 0, '12.00-12.50', '12:00', '12:50', 'H-405', 'MI', 'R. 402', 5),
+
+  -- Monday
+  ('mon-3', 'Monday', 1, '10.00-10.50', '10:00', '10:50', 'H 402', 'FA', 'R. 402', 3),
+  ('mon-4', 'Monday', 1, '11.00-11.50', '11:00', '11:50', 'H 401', 'BH', 'R. 436', 4),
+  ('mon-5', 'Monday', 1, '12.00-12.50', '12:00', '12:50', 'H 401', 'BH', 'R. 436', 5),
+  ('mon-6', 'Monday', 1, '2.00-2.50', '14:00', '14:50', 'H 408', 'JHK', 'R. 401', 6),
+  ('mon-7', 'Monday', 1, '3.00-3.50', '15:00', '15:50', 'H 408', 'JHK', 'R. 401', 7),
+
+  -- Tuesday
+  ('tue-1', 'Tuesday', 2, '8.00-8.50', '08:00', '08:50', 'H-405', 'MI', 'R. 402', 1),
+  ('tue-2', 'Tuesday', 2, '9.00-9.50', '09:00', '09:50', 'H-404', 'KKS', 'R. 402', 2),
+  ('tue-3', 'Tuesday', 2, '10.00-10.50', '10:00', '10:50', 'H-404', 'KKS', 'R. 402', 3),
+  ('tue-4', 'Tuesday', 2, '11.00-11.50', '11:00', '11:50', 'H 406', 'JAK', 'R. 406', 4),
+  ('tue-5', 'Tuesday', 2, '12.00-12.50', '12:00', '12:50', 'H 403', 'FTZ', 'R. 427', 5),
+  ('tue-6', 'Tuesday', 2, '2.00-2.50', '14:00', '14:50', 'H-407', 'NS', 'R. 402', 6),
+
+  -- Wednesday
+  ('wed-2', 'Wednesday', 3, '9.00-9.50', '09:00', '09:50', 'H 402', 'FA', 'R. 402', 2),
+  ('wed-3', 'Wednesday', 3, '10.00-10.50', '10:00', '10:50', 'H 408', 'JHK', 'R. 402', 3),
+  ('wed-4', 'Wednesday', 3, '11.00-11.50', '11:00', '11:50', 'H 401', 'BH', 'R. 402', 4),
+  ('wed-5', 'Wednesday', 3, '12.00-12.50', '12:00', '12:50', 'H 403', 'FTZ', 'R. 427', 5),
+  ('wed-6', 'Wednesday', 3, '2.00-2.50', '14:00', '14:50', 'H 403', 'FTZ', 'R. 427', 6),
+
+  -- Thursday
+  ('thu-2', 'Thursday', 4, '9.00-9.50', '09:00', '09:50', 'H-404', 'KKS', 'R. 402', 2),
+  ('thu-3', 'Thursday', 4, '10.00-10.50', '10:00', '10:50', 'H-404', 'KKS', 'R. 402', 3),
+  ('thu-4', 'Thursday', 4, '11.00-11.50', '11:00', '11:50', 'H-407', 'NS', 'R. 402', 4),
+  ('thu-5', 'Thursday', 4, '12.00-12.50', '12:00', '12:50', 'H-407', 'NS', 'R. 402', 5)
+ON CONFLICT (id) DO NOTHING;

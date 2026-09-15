@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ExamDetailPanel from './ExamDetailPanel';
+import { getRoutineForDay } from '../../services/routineService';
 
 const DOW_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_NAMES = [
@@ -76,9 +77,50 @@ function sortExams(list, todayStr) {
   });
 }
 
+function isSameExamClass(a, b) {
+  if (!a || !b) return false;
+  const codeA = (a.subject || '').replace(/[\s-]/g, '').toLowerCase();
+  const codeB = (b.subject || '').replace(/[\s-]/g, '').toLowerCase();
+  const roomA = (a.room || '').replace(/^r\.?\s*/i, '').trim().toLowerCase();
+  const roomB = (b.room || '').replace(/^r\.?\s*/i, '').trim().toLowerCase();
+  const instrA = (a.teacher || '').trim().toLowerCase();
+  const instrB = (b.teacher || '').trim().toLowerCase();
+  return codeA === codeB && roomA === roomB && instrA === instrB;
+}
+
+function mergeConsecutiveClasses(classes = []) {
+  if (!classes || classes.length === 0) return [];
+  const merged = [];
+  let i = 0;
+  while (i < classes.length) {
+    const cur = classes[i];
+    let startIdx = i;
+    let endIdx = i;
+    while (
+      endIdx + 1 < classes.length &&
+      isSameExamClass(cur, classes[endIdx + 1])
+    ) {
+      endIdx++;
+    }
+    const startTime = (classes[startIdx].timeSlot || '').split('-')[0];
+    const endTime = (classes[endIdx].timeSlot || '').split('-')[1] || classes[endIdx].timeSlot;
+    const timeLabel = startIdx === endIdx ? classes[startIdx].timeSlot : `${startTime}-${endTime}`;
+
+    merged.push({
+      ...cur,
+      timeSlot: timeLabel,
+      isMerged: endIdx > startIdx,
+      slotsCount: endIdx - startIdx + 1,
+    });
+    i = endIdx + 1;
+  }
+  return merged;
+}
+
 export default function ExamCalendar({
   onAddExam,
   exams: examsProp = [],
+  routineList = [],
   currentUser = null,
   topperIds = [],
   foldersList = [],
@@ -95,6 +137,7 @@ export default function ExamCalendar({
   const [selectedDate, setSelectedDate] = useState(today);
   const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
   const [selectedExam, setSelectedExam] = useState(null); // exam detail panel
+  const [dayScheduleTab, setDayScheduleTab] = useState('all'); // 'all' | 'classes' | 'exams'
   // Track which suggestion to highlight — only active on deep-link arrival;
   // cleared when user manually opens a different exam so re-opens don't re-highlight
   const [activeHighlightSuggId, setActiveHighlightSuggId] = useState(highlightSuggId);
@@ -140,6 +183,11 @@ export default function ExamCalendar({
 
   const monthlyExamsList = sortExams(getMonthExams(), todayStr);
   const dailyExamsList = sortExams(exams.filter(e => e.date === selectedDateStr), todayStr);
+  const selectedDayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+  const dailyClassesList = useMemo(() => {
+    const raw = getRoutineForDay(selectedDate.getDay(), routineList);
+    return mergeConsecutiveClasses(raw);
+  }, [selectedDate, routineList]);
 
   const monthGrid = buildMonthGrid(activeYear, activeMonth);
   const weekStrip = buildWeekStrip(selectedDate);
@@ -320,10 +368,40 @@ export default function ExamCalendar({
 
         {/* bottom Sheet */}
         <div className="cal-exam-sheet">
-          <div className="cal-exam-sheet-header">
-            <span className="cal-exam-sheet-title">
-              {viewMode === 'month' ? `Exams in ${MONTH_NAMES[activeMonth]} ${activeYear}` : `Exams for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-            </span>
+          <div className="cal-exam-sheet-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span className="cal-exam-sheet-title">
+                {viewMode === 'month'
+                  ? `Exams in ${MONTH_NAMES[activeMonth]} ${activeYear}`
+                  : `${selectedDayName}, ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+              </span>
+            </div>
+
+            {viewMode === 'week' && (
+              <div className="cal-sheet-tabs">
+                <button
+                  type="button"
+                  className={`cal-sheet-tab ${dayScheduleTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setDayScheduleTab('all')}
+                >
+                  All ({dailyClassesList.length + dailyExamsList.length})
+                </button>
+                <button
+                  type="button"
+                  className={`cal-sheet-tab ${dayScheduleTab === 'classes' ? 'active' : ''}`}
+                  onClick={() => setDayScheduleTab('classes')}
+                >
+                  Classes ({dailyClassesList.length})
+                </button>
+                <button
+                  type="button"
+                  className={`cal-sheet-tab ${dayScheduleTab === 'exams' ? 'active' : ''}`}
+                  onClick={() => setDayScheduleTab('exams')}
+                >
+                  Exams ({dailyExamsList.length})
+                </button>
+              </div>
+            )}
           </div>
 
           {viewMode === 'month' ? (
@@ -375,51 +453,84 @@ export default function ExamCalendar({
               </div>
             )
           ) : (
-            /* Week View: List exams for selected date only */
-            dailyExamsList.length === 0 ? (
-              <div className="cal-empty-exams">
-                <div className="cal-empty-exams-icon">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-card-muted)' }}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                </div>
-                <div className="cal-empty-exams-text">No exams scheduled</div>
-                <div className="cal-empty-exams-sub">
-                  {selectedDateStr === todayStr ? 'Nothing today - relax!' : 'No exams for this day'}
-                </div>
-              </div>
-            ) : (
-              <div className="cal-exam-list">
-                {dailyExamsList.map((exam, idx) => {
-                  const isPast = exam.date < todayStr;
-                  return (
-                    <div
-                      key={exam.id}
-                      className={`cal-exam-item ${isPast ? 'past' : ''}`}
-                      onClick={() => handleExamCardClick(exam)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="cal-exam-num cal-exam-num-week">
-                        {idx + 1}
-                      </div>
-                      <div className="cal-exam-body">
-                        <div className="cal-exam-name">{exam.subject}</div>
-                        <div className="cal-exam-meta">
-                          {exam.duration && <span>{exam.duration}</span>}
-                          {exam.duration && exam.room && <span>·</span>}
-                          {exam.room && <span>{exam.room}</span>}
-                          {exam.notes && <span>· {exam.notes}</span>}
+            /* Week View: List classes & exams for selected date */
+            <div className="cal-daily-schedule">
+              {/* Classes Section */}
+              {(dayScheduleTab === 'all' || dayScheduleTab === 'classes') && (
+                <div className="cal-schedule-block">
+                  <div className="cal-block-title">
+                    <span>Scheduled Classes</span>
+                    <span className="cal-block-count">{dailyClassesList.length}</span>
+                  </div>
+
+                  {dailyClassesList.length === 0 ? (
+                    <div className="cal-empty-sub-item">No regular classes on {selectedDayName}</div>
+                  ) : (
+                    <div className="cal-class-list">
+                      {dailyClassesList.map((cls, idx) => (
+                        <div key={cls.id || idx} className="cal-class-item">
+                          <div className="cal-class-time-col">
+                            <span className="cal-class-time-text">{cls.timeSlot}</span>
+                          </div>
+                          <div className="cal-class-info-col">
+                            <div className="cal-class-header">
+                              <span className="cal-class-subject-tag">{cls.subject}</span>
+                              {cls.teacher && <span className="cal-class-teacher-tag">({cls.teacher})</span>}
+                            </div>
+                            <div className="cal-class-details">
+                              {cls.room && <span className="cal-class-room-tag">Room {cls.room.replace(/^R\.?\s*/i, '')}</span>}
+                              {cls.notes && <span className="cal-class-notes">· {cls.notes}</span>}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="cal-exam-time">{exam.time}</div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            )
+                  )}
+                </div>
+              )}
+
+              {/* Exams Section */}
+              {(dayScheduleTab === 'all' || dayScheduleTab === 'exams') && (
+                <div className="cal-schedule-block">
+                  <div className="cal-block-title">
+                    <span>Exams</span>
+                    <span className="cal-block-count">{dailyExamsList.length}</span>
+                  </div>
+
+                  {dailyExamsList.length === 0 ? (
+                    <div className="cal-empty-sub-item">No exams scheduled for this date</div>
+                  ) : (
+                    <div className="cal-exam-list">
+                      {dailyExamsList.map((exam, idx) => {
+                        const isPast = exam.date < todayStr;
+                        return (
+                          <div
+                            key={exam.id}
+                            className={`cal-exam-item ${isPast ? 'past' : ''}`}
+                            onClick={() => handleExamCardClick(exam)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="cal-exam-num cal-exam-num-week">
+                              {idx + 1}
+                            </div>
+                            <div className="cal-exam-body">
+                              <div className="cal-exam-name">{exam.subject}</div>
+                              <div className="cal-exam-meta">
+                                {exam.duration && <span>{exam.duration}</span>}
+                                {exam.duration && exam.room && <span>·</span>}
+                                {exam.room && <span>{exam.room}</span>}
+                                {exam.notes && <span>· {exam.notes}</span>}
+                              </div>
+                            </div>
+                            <div className="cal-exam-time">{exam.time}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

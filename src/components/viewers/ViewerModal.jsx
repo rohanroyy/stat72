@@ -14,10 +14,12 @@ export default function ViewerModal({ file, onClose, children }) {
     };
     document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('viewer-open');
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      document.body.classList.remove('viewer-open');
     };
   }, [onClose]);
 

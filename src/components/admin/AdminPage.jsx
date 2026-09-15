@@ -11,6 +11,7 @@ import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotification, deleteBroadcastNotification } from '../../services/broadcastService';
 import { fetchTopperIds, saveTopperIds } from '../../services/suggestionService';
 import { startAdminGoogleAuth, getOAuthRedirectUri } from '../../services/driveService';
+import { DAYS_OF_WEEK, TIME_SLOTS } from '../../services/routineService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -26,6 +27,11 @@ export default function AdminPage({
   onTelegramFoldersUpdated,
   examsList = [],
   onSaveExam,
+  onDeleteExam,
+  routineList = [],
+  onSaveRoutineItem,
+  onDeleteRoutineItem,
+  onResetRoutine,
   suggestionUploadFolder = '',
   onSaveSuggestionUploadFolder,
   googleServiceAccount = null,
@@ -78,6 +84,16 @@ export default function AdminPage({
   const [examRoom, setExamRoom] = useState('');
   const [examNotes, setExamNotes] = useState('');
   const [examSaveStatus, setExamSaveStatus] = useState('');
+
+  // Class Routine states
+  const [routineDay, setRoutineDay] = useState('Sunday');
+  const [routineTimeSlot, setRoutineTimeSlot] = useState('10.00-10.50');
+  const [routineSubject, setRoutineSubject] = useState('');
+  const [routineTeacher, setRoutineTeacher] = useState('');
+  const [routineRoom, setRoutineRoom] = useState('');
+  const [routineNotes, setRoutineNotes] = useState('');
+  const [editingRoutineId, setEditingRoutineId] = useState(null);
+  const [routineSaveStatus, setRoutineSaveStatus] = useState('');
 
   // Toppers
   const [topperIds, setTopperIds] = useState([]);
@@ -541,6 +557,85 @@ export default function AdminPage({
       syncToBridge('studydock_exams', JSON.stringify(updated || []));
     } catch (err) {
       alert(`Failed to delete exam: ${err.message}`);
+    }
+  };
+
+  // ── Class Routine Handlers ──────────────────────────────────────────────────
+  const handleRoutineSubmit = async (e) => {
+    e.preventDefault();
+    if (!routineSubject.trim() || !routineDay) return;
+
+    const matchedDay = DAYS_OF_WEEK.find(d => d.day.toLowerCase() === routineDay.toLowerCase()) || DAYS_OF_WEEK[0];
+    const matchedSlot = TIME_SLOTS.find(s => s.label === routineTimeSlot || s.id === routineTimeSlot) || {
+      start: routineTimeSlot.split('-')[0]?.trim() || '10:00',
+      end: routineTimeSlot.split('-')[1]?.trim() || '10:50',
+    };
+
+    try {
+      if (onSaveRoutineItem) {
+        await onSaveRoutineItem({
+          id: editingRoutineId || undefined,
+          day: matchedDay.day,
+          dayIndex: matchedDay.dayIndex,
+          timeSlot: routineTimeSlot,
+          startTime: matchedSlot.start,
+          endTime: matchedSlot.end,
+          subject: routineSubject.trim(),
+          teacher: routineTeacher.trim(),
+          room: routineRoom.trim(),
+          notes: routineNotes.trim(),
+        });
+      }
+
+      setRoutineSubject('');
+      setRoutineTeacher('');
+      setRoutineRoom('');
+      setRoutineNotes('');
+      setEditingRoutineId(null);
+      setRoutineSaveStatus(editingRoutineId ? 'Class updated!' : 'Class added to routine!');
+      setTimeout(() => setRoutineSaveStatus(''), 3000);
+    } catch (err) {
+      setRoutineSaveStatus(`Error: ${err.message}`);
+      setTimeout(() => setRoutineSaveStatus(''), 5000);
+    }
+  };
+
+  const handleEditRoutine = (item) => {
+    setEditingRoutineId(item.id);
+    setRoutineDay(item.day);
+    setRoutineTimeSlot(item.timeSlot);
+    setRoutineSubject(item.subject);
+    setRoutineTeacher(item.teacher || '');
+    setRoutineRoom(item.room || '');
+    setRoutineNotes(item.notes || '');
+    document.getElementById('admin-routine-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleCancelRoutineEdit = () => {
+    setEditingRoutineId(null);
+    setRoutineSubject('');
+    setRoutineTeacher('');
+    setRoutineRoom('');
+    setRoutineNotes('');
+  };
+
+  const handleDeleteRoutine = async (id) => {
+    if (!window.confirm('Delete this class slot from the routine?')) return;
+    try {
+      if (onDeleteRoutineItem) await onDeleteRoutineItem(id);
+    } catch (err) {
+      alert(`Failed to delete class: ${err.message}`);
+    }
+  };
+
+  const handleResetRoutine = async () => {
+    if (!window.confirm('Reset the entire routine back to the original default timetable?')) return;
+    try {
+      if (onResetRoutine) await onResetRoutine();
+      setRoutineSaveStatus('Routine restored to default timetable!');
+      setTimeout(() => setRoutineSaveStatus(''), 3000);
+    } catch (err) {
+      alert(`Failed to reset routine: ${err.message}`);
     }
   };
 
@@ -1611,6 +1706,205 @@ export default function AdminPage({
             </div>
           </div>
         )}
+      </section>
+
+      {/* ── Class Routine Management Section ──────────────────────── */}
+      <section className="admin-section" id="admin-routine-section">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 className="admin-section-title" style={{ margin: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            Class Routine Schedule
+          </h3>
+          <button
+            type="button"
+            className="admin-btn-secondary"
+            onClick={handleResetRoutine}
+            title="Reset routine to the original weekly timetable"
+            style={{ fontSize: '12px', padding: '6px 12px' }}
+          >
+            Reset to Default Timetable
+          </button>
+        </div>
+
+        <form onSubmit={handleRoutineSubmit}>
+          <div className="admin-form-grid">
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-day">Day of Week *</label>
+              <select
+                id="routine-day"
+                className="admin-input"
+                value={routineDay}
+                onChange={e => setRoutineDay(e.target.value)}
+                required
+              >
+                {DAYS_OF_WEEK.map(d => (
+                  <option key={d.dayIndex} value={d.day}>{d.day}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-time">Time Slot *</label>
+              <select
+                id="routine-time"
+                className="admin-input"
+                value={routineTimeSlot}
+                onChange={e => setRoutineTimeSlot(e.target.value)}
+                required
+              >
+                {TIME_SLOTS.filter(s => !s.isLunch).map(s => (
+                  <option key={s.id} value={s.label.replace(/\s+/g, '')}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-subject">Course / Subject Code *</label>
+              <input
+                id="routine-subject"
+                className="admin-input"
+                type="text"
+                placeholder="e.g. H-405, H 406"
+                value={routineSubject}
+                onChange={e => setRoutineSubject(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-teacher">Teacher Abbreviation</label>
+              <input
+                id="routine-teacher"
+                className="admin-input"
+                type="text"
+                placeholder="e.g. MI, JAK, FA"
+                value={routineTeacher}
+                onChange={e => setRoutineTeacher(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-room">Room / Venue</label>
+              <input
+                id="routine-room"
+                className="admin-input"
+                type="text"
+                placeholder="e.g. R. 402, R. 436"
+                value={routineRoom}
+                onChange={e => setRoutineRoom(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label className="admin-label" htmlFor="routine-notes">Notes</label>
+              <input
+                id="routine-notes"
+                className="admin-input"
+                type="text"
+                placeholder="Optional comments"
+                value={routineNotes}
+                onChange={e => setRoutineNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+            <button type="submit" className="admin-btn">
+              {editingRoutineId ? 'Update Class Slot' : 'Add Class to Routine'}
+            </button>
+            {editingRoutineId && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={handleCancelRoutineEdit}
+              >
+                Cancel Edit
+              </button>
+            )}
+            {routineSaveStatus && (
+              <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: '500' }}>
+                {routineSaveStatus}
+              </span>
+            )}
+          </div>
+        </form>
+
+        {/* Existing Routine List */}
+        <div style={{ marginTop: '24px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '12px', fontFamily: 'var(--font-mono)' }}>
+            Current Classes ({routineList.length} total)
+          </div>
+
+          <div className="admin-routine-groups">
+            {DAYS_OF_WEEK.map(d => {
+              const dayItems = routineList
+                .filter(r => r.dayIndex === d.dayIndex || r.day.toLowerCase() === d.day.toLowerCase())
+                .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+              return (
+                <div key={d.dayIndex} style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{d.day}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>
+                      ({dayItems.length} class{dayItems.length !== 1 ? 'es' : ''})
+                    </span>
+                  </div>
+
+                  {dayItems.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '6px 12px', background: 'var(--bg-surface-2)', borderRadius: 'var(--radius-sm)' }}>
+                      No classes scheduled for this day
+                    </div>
+                  ) : (
+                    <div className="admin-folders-list">
+                      {dayItems.map(item => (
+                        <div key={item.id} className="admin-folder-row-item">
+                          <div className="admin-folder-info">
+                            <div className="admin-folder-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>{item.subject}</span>
+                              {item.teacher && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>({item.teacher})</span>}
+                            </div>
+                            <div className="admin-folder-link">
+                              {item.timeSlot} {item.room ? `· ${item.room}` : ''} {item.notes ? `· ${item.notes}` : ''}
+                            </div>
+                          </div>
+                          <div className="admin-actions">
+                            <button
+                              type="button"
+                              className="admin-icon-btn edit"
+                              onClick={() => handleEditRoutine(item)}
+                              aria-label="Edit class"
+                              title="Edit"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-icon-btn delete"
+                              onClick={() => handleDeleteRoutine(item.id)}
+                              aria-label="Delete class"
+                              title="Delete"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
       </>
       )}
