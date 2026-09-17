@@ -29,42 +29,261 @@ function mergeDay(slots) {
 }
 function parseTime(time) { return time.split('-').map((value) => { const [rawHour, rawMinute = '0'] = value.trim().split('.'); let hour = Number(rawHour); if (hour >= 1 && hour <= 5) hour += 12; return hour * 60 + Number(rawMinute); }); }
 
+/** Given a day name, return the nearest date (today or next occurrence) as a YYYY-MM-DD string. */
+function getDateStrForDayName(dayName) {
+  const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
+  if (dayIndex === -1) return null;
+  const now = new Date();
+  const diff = (dayIndex - now.getDay() + 7) % 7;
+  const target = new Date(now);
+  target.setDate(now.getDate() + diff);
+  return `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+}
+
+/** Check if a YYYY-MM-DD date falls on any holiday. */
+function findHolidayForDate(dateStr, holidays) {
+  if (!dateStr || !holidays.length) return null;
+  return holidays.find(h => {
+    if (!h.date) return false;
+    if (h.isRange && h.endDate) return dateStr >= h.date && dateStr <= h.endDate;
+    return dateStr === h.date;
+  }) || null;
+}
+
 const CalendarIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>;
 const GridIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
 const PinIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>;
 const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6"/></svg>;
 const ChevronIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>;
 
-export default function RoutinePage({ routineList = [] }) {
+function buildSchedule(items) {
+  if (!items || !items.length) return DEFAULT_SCHEDULE;
+  const startIndex = { '08:00': 0, '8:00': 0, '8.00': 0, '09:00': 1, '9:00': 1, '9.00': 1, '10:00': 2, '10.00': 2, '11:00': 3, '11.00': 3, '12:00': 4, '12.00': 4, '14:00': 6, '2:00': 6, '2.00': 6, '15:00': 7, '3:00': 7, '3.00': 7 };
+  const built = Object.fromEntries(DAYS.map((day) => [day, [null, null, null, null, null, 'break', null, null]]));
+  items.forEach((item) => {
+    const index = startIndex[String(item.startTime || '').trim()];
+    if (built[item.day] && index !== undefined && index !== 5) {
+      built[item.day][index] = {
+        code: item.subject,
+        room: String(item.room || '').replace(/^r\.?\s*/i, ''),
+        teacher: item.teacher || ''
+      };
+    }
+  });
+  return built;
+}
+
+export default function RoutinePage({ routineList = [], baseRoutineList = [], holidays = [] }) {
   const now = new Date();
   const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
   const [selectedDay, setSelectedDay] = useState(DAYS.includes(todayName) ? todayName : 'Sunday');
   const [view, setView] = useState('day');
-  const schedule = useMemo(() => {
-    if (!routineList.length) return DEFAULT_SCHEDULE;
-    const startIndex = { '08:00': 0, '8:00': 0, '8.00': 0, '09:00': 1, '9:00': 1, '9.00': 1, '10:00': 2, '10.00': 2, '11:00': 3, '11.00': 3, '12:00': 4, '12.00': 4, '14:00': 6, '2:00': 6, '2.00': 6, '15:00': 7, '3:00': 7, '3.00': 7 };
-    const built = Object.fromEntries(DAYS.map((day) => [day, [null, null, null, null, null, 'break', null, null]]));
-    routineList.forEach((item) => { const index = startIndex[String(item.startTime || '').trim()]; if (built[item.day] && index !== undefined && index !== 5) built[item.day][index] = { code: item.subject, room: String(item.room || '').replace(/^r\.?\s*/i, ''), teacher: item.teacher || '' }; });
-    return built;
-  }, [routineList]);
-  const dailyItems = useMemo(() => mergeDay(schedule[selectedDay]), [schedule, selectedDay]);
+  const [showDefaultRoutine, setShowDefaultRoutine] = useState(false);
+
+  const effectiveSchedule = useMemo(() => buildSchedule(routineList), [routineList]);
+  const defaultSchedule = useMemo(() => {
+    if (baseRoutineList && baseRoutineList.length) {
+      return buildSchedule(baseRoutineList);
+    }
+    return DEFAULT_SCHEDULE;
+  }, [baseRoutineList]);
+
+  const activeSchedule = showDefaultRoutine ? defaultSchedule : effectiveSchedule;
+  const activeHolidays = showDefaultRoutine ? [] : holidays;
+
+  const dailyItems = useMemo(() => mergeDay(activeSchedule[selectedDay]), [activeSchedule, selectedDay]);
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const selectedIsToday = selectedDay === todayName;
+
+  // Derive the calendar date for the selected day and check if it's a holiday
+  const selectedDayDateStr = getDateStrForDayName(selectedDay);
+  const selectedDayHoliday = findHolidayForDate(selectedDayDateStr, activeHolidays);
+
   return <main className="routine-page-root">
-    <header className="routine-header-v2"><div className="routine-header-content"><div className="routine-heading"><h1>Class routine</h1></div><div className="routine-view-switch" aria-label="Routine view"><button className={view === 'day' ? 'is-active' : ''} onClick={() => setView('day')} aria-pressed={view === 'day'}><CalendarIcon /><span>Daily</span></button><button className={view === 'week' ? 'is-active' : ''} onClick={() => setView('week')} aria-pressed={view === 'week'}><GridIcon /><span>Weekly</span></button></div></div>
-      {view === 'day' && <div className="routine-day-strip" role="tablist" aria-label="Choose a day">{DAYS.map((day) => <button key={day} className={`routine-day-button ${selectedDay === day ? 'is-active' : ''} ${day === todayName ? 'is-today' : ''}`} onClick={() => setSelectedDay(day)} role="tab" aria-selected={selectedDay === day}><span>{day.slice(0, 3)}</span></button>)}</div>}
+    <header className="routine-header-v2">
+      <div className="routine-header-content">
+        <div className="routine-heading">
+          <h1>Class routine</h1>
+        </div>
+        <div className="routine-view-switch" aria-label="Routine view">
+          <button className={view === 'day' ? 'is-active' : ''} onClick={() => setView('day')} aria-pressed={view === 'day'}>
+            <CalendarIcon /><span>Daily</span>
+          </button>
+          <button className={view === 'week' ? 'is-active' : ''} onClick={() => setView('week')} aria-pressed={view === 'week'}>
+            <GridIcon /><span>Weekly</span>
+          </button>
+        </div>
+      </div>
+      {view === 'day' && (
+        <div className="routine-day-strip" role="tablist" aria-label="Choose a day">
+          {DAYS.map((day) => (
+            <button
+              key={day}
+              className={`routine-day-button ${selectedDay === day ? 'is-active' : ''} ${day === todayName ? 'is-today' : ''}`}
+              onClick={() => setSelectedDay(day)}
+              role="tab"
+              aria-selected={selectedDay === day}
+            >
+              <span>{day.slice(0, 3)}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </header>
-    <section className="routine-scroll-area"><div className="routine-content-v2">{view === 'day' ? <DailyView items={dailyItems} selectedDay={selectedDay} isToday={selectedIsToday} currentMinutes={currentMinutes} /> : <WeeklyView schedule={schedule} todayName={todayName} onSelectDay={(day) => { setSelectedDay(day); setView('day'); }} />}</div></section>
+    <section className="routine-scroll-area">
+      <div className="routine-content-v2">
+        {view === 'day' ? (
+          <DailyView
+            items={dailyItems}
+            selectedDay={selectedDay}
+            isToday={selectedIsToday}
+            currentMinutes={currentMinutes}
+            holiday={selectedDayHoliday}
+            isDefaultMode={showDefaultRoutine}
+            onToggleMode={setShowDefaultRoutine}
+          />
+        ) : (
+          <WeeklyView
+            schedule={activeSchedule}
+            todayName={todayName}
+            holidays={activeHolidays}
+            isDefaultMode={showDefaultRoutine}
+            onToggleMode={setShowDefaultRoutine}
+            onSelectDay={(day) => {
+              setSelectedDay(day);
+              setView('day');
+            }}
+          />
+        )}
+      </div>
+    </section>
   </main>;
 }
 
-function DailyView({ items, selectedDay, isToday, currentMinutes }) {
+function DailyView({ items, selectedDay, isToday, currentMinutes, holiday, isDefaultMode }) {
   const classes = items.filter((item) => item.type === 'class');
-  return <><div className="routine-day-summary"><div><span>{isToday ? 'Today' : selectedDay}</span><strong>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</strong></div></div>
-    {items.length ? <div className="routine-timeline-v2">{items.map((item, index) => item.type === 'break' ? <div className="routine-break-v2" key={`break-${index}`}><span>1.00–2.00 PM</span><div><b>Lunch break</b></div></div> : <ClassCard key={`${item.code}-${index}`} item={item} isLive={isToday && (() => { const [start, end] = parseTime(item.time); return currentMinutes >= start && currentMinutes < end; })()} />)}</div> : <div className="routine-empty-v2"><CalendarIcon /><h2>No classes</h2></div>}</>;
+  return <>
+    <div className="routine-day-summary">
+      <div>
+        <span>{isToday ? 'Today' : selectedDay}</span>
+        <strong>{holiday ? 'Holiday' : `${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}</strong>
+      </div>
+      {isDefaultMode && (
+        <span className="routine-day-default-pill">Default routine</span>
+      )}
+    </div>
+    {holiday ? (
+      <div className="routine-holiday-banner">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>
+        </svg>
+        <div>
+          <b>{holiday.label}</b>
+          {holiday.note && <p>{holiday.note}</p>}
+          <p style={{ opacity: 0.65, fontSize: '12px', marginTop: '2px' }}>No classes scheduled</p>
+        </div>
+      </div>
+    ) : items.length ? (
+      <div className="routine-timeline-v2">
+        {items.map((item, index) => item.type === 'break' ? (
+          <div className="routine-break-v2" key={`break-${index}`}>
+            <span>1.00–2.00 PM</span>
+            <div><b>Lunch break</b></div>
+          </div>
+        ) : (
+          <ClassCard key={`${item.code}-${index}`} item={item} isLive={isToday && (() => { const [start, end] = parseTime(item.time); return currentMinutes >= start && currentMinutes < end; })()} />
+        ))}
+      </div>
+    ) : (
+      <div className="routine-empty-v2">
+        <CalendarIcon />
+        <h2>No classes</h2>
+      </div>
+    )}
+  </>;
 }
+
 function ClassCard({ item, isLive }) {
   const periodCount = item.end - item.start + 1;
-  return <article className={`routine-class-v2 tone-${item.tone} ${isLive ? 'is-live' : ''}`} style={{ '--period-count': periodCount }} aria-label={`${item.code}, ${item.time}, ${periodCount} ${periodCount === 1 ? 'period' : 'periods'}`}><div className="routine-time-v2"><span>{item.time}</span>{isLive && <b><i />Now</b>}</div><div className="routine-class-main"><div className="routine-subject-line"><h2>{item.code}</h2>{periodCount > 1 && <span>{periodCount} periods</span>}</div><div className="routine-details-v2">{item.teacher && <span><UserIcon />{item.teacher}</span>}{item.room && <span><PinIcon />Room {item.room}</span>}</div></div></article>;
+  return <article className={`routine-class-v2 tone-${item.tone} ${isLive ? 'is-live' : ''}`} style={{ '--period-count': periodCount }} aria-label={`${item.code}, ${item.time}, ${periodCount} ${periodCount === 1 ? 'period' : 'periods'}`}><div className="routine-time-v2"><span>{item.time}</span>{isLive && <b><i />{`Now`}</b>}</div><div className="routine-class-main"><div className="routine-subject-line"><h2>{item.code}</h2>{periodCount > 1 && <span>{periodCount} periods</span>}</div><div className="routine-details-v2">{item.teacher && <span><UserIcon />{item.teacher}</span>}{item.room && <span><PinIcon />Room {item.room}</span>}</div></div></article>;
 }
-function WeeklyView({ schedule, todayName, onSelectDay }) { return <div className="routine-week-v2"><div className="routine-week-intro"><h2>Weekly routine</h2></div><div className="routine-week-grid">{DAYS.map((day) => { const items = mergeDay(schedule[day]).filter((item) => item.type === 'class'); return <button key={day} className={`routine-week-day ${day === todayName ? 'is-today' : ''}`} onClick={() => onSelectDay(day)}><div className="routine-week-day-head"><div><span>{day.slice(0, 3)}</span><strong>{day === todayName ? 'Today' : `${items.length} classes`}</strong></div><em aria-hidden="true"><ChevronIcon /></em></div><div className="routine-week-list">{items.length ? items.map((item, index) => { const periodCount = item.end - item.start + 1; return <div className={`routine-week-item tone-${item.tone}`} style={{ '--period-count': periodCount }} key={`${item.code}-${index}`}><span>{item.time}</span><b>{item.code}</b><small>{item.room ? `R. ${item.room}` : 'Room TBA'}</small></div>; }) : <p>No classes</p>}</div></button>; })}</div></div>; }
+
+function WeeklyView({ schedule, todayName, holidays, isDefaultMode, onToggleMode, onSelectDay }) {
+  return (
+    <div className="routine-week-v2">
+      <div className="routine-week-intro">
+        <div className="routine-week-heading-group">
+          <h2>Weekly routine</h2>
+          <span className="routine-week-subhead">
+            {isDefaultMode ? 'Original semester schedule' : 'Current live schedule'}
+          </span>
+        </div>
+        <div className="routine-mode-switch" role="group" aria-label="Routine display mode">
+          <button
+            type="button"
+            className={`routine-mode-btn ${!isDefaultMode ? 'is-active' : ''}`}
+            onClick={() => onToggleMode(false)}
+            aria-pressed={!isDefaultMode}
+            title="Current schedule with vacations, holidays, and CR reschedules"
+          >
+            <span>Current</span>
+          </button>
+          <button
+            type="button"
+            className={`routine-mode-btn ${isDefaultMode ? 'is-active' : ''}`}
+            onClick={() => onToggleMode(true)}
+            aria-pressed={isDefaultMode}
+            title="Default schedule without any vacations, holidays, or reschedules"
+          >
+            <span>Default</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="routine-week-grid">
+        {DAYS.map((day) => {
+          const dateStr = getDateStrForDayName(day);
+          const holiday = findHolidayForDate(dateStr, holidays);
+          const items = mergeDay(schedule[day]).filter((item) => item.type === 'class');
+          return (
+            <button
+              key={day}
+              className={`routine-week-day ${day === todayName ? 'is-today' : ''} ${holiday ? 'is-holiday' : ''}`}
+              onClick={() => onSelectDay(day)}
+            >
+              <div className="routine-week-day-head">
+                <div>
+                  <span>{day.slice(0, 3)}</span>
+                  <strong>{day === todayName ? 'Today' : holiday ? 'Holiday' : `${items.length} classes`}</strong>
+                </div>
+                <em aria-hidden="true"><ChevronIcon /></em>
+              </div>
+              <div className="routine-week-list">
+                {holiday ? (
+                  <p className="routine-week-holiday-label">🎉 {holiday.label}</p>
+                ) : items.length ? (
+                  items.map((item, index) => {
+                    const periodCount = item.end - item.start + 1;
+                    return (
+                      <div
+                        className={`routine-week-item tone-${item.tone}`}
+                        style={{ '--period-count': periodCount }}
+                        key={`${item.code}-${index}`}
+                      >
+                        <span>{item.time}</span>
+                        <b>{item.code}</b>
+                        <small>{item.room ? `R. ${item.room}` : 'Room TBA'}</small>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p>No classes</p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

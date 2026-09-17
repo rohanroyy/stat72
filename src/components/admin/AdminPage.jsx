@@ -12,6 +12,7 @@ import { fetchAllStudents, fetchBroadcastNotifications, sendBroadcastNotificatio
 import { fetchTopperIds, saveTopperIds } from '../../services/suggestionService';
 import { startAdminGoogleAuth, getOAuthRedirectUri } from '../../services/driveService';
 import { DAYS_OF_WEEK, TIME_SLOTS } from '../../services/routineService';
+import { fetchCRIds, saveCRIds } from '../../services/crService';
 
 const IS_SUBDOMAIN = window.location.hostname.startsWith('admin.');
 
@@ -110,10 +111,16 @@ export default function AdminPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [notifSendStatus, setNotifSendStatus] = useState('');
 
+  // CR Management
+  const [crIds, setCrIds] = useState([]);
+  const [crSearchQuery, setCrSearchQuery] = useState('');
+  const [crSaveStatus, setCrSaveStatus] = useState('');
+
   useEffect(() => {
     fetchAllStudents().then(setStudents).catch(err => console.error('Failed to load students:', err));
     fetchBroadcastNotifications().then(setBroadcasts).catch(err => console.error('Failed to load broadcasts:', err));
     fetchTopperIds().then(setTopperIds).catch(err => console.error('Failed to load toppers:', err));
+    fetchCRIds().then(setCrIds).catch(err => console.error('Failed to load CR IDs:', err));
   }, []);
 
   const filteredStudents = students.filter(s => {
@@ -1905,6 +1912,98 @@ export default function AdminPage({
             })}
           </div>
         </div>
+      </section>
+      {/* ── CR Management Section ─────────────────────────────── */}
+      <section className="admin-section" id="admin-cr-section">
+        <h3 className="admin-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#7c3aed' }}>
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          CR (Class Representative) Management
+        </h3>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.6 }}>
+          Select students who are Class Representatives. CRs get access to the CR Panel in their dashboard
+          where they can make announcements, manage holidays, and reschedule classes.
+        </p>
+
+        <input
+          type="text"
+          className="admin-input"
+          placeholder="Search by name, roll, or registration..."
+          value={crSearchQuery}
+          onChange={e => setCrSearchQuery(e.target.value)}
+          style={{ marginBottom: '10px', height: '36px', fontSize: '12.5px' }}
+        />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto', marginBottom: '14px', paddingRight: '4px' }}>
+          {students
+            .filter(s => {
+              const q = crSearchQuery.toLowerCase().trim();
+              if (!q) return true;
+              return (s.name || '').toLowerCase().includes(q) ||
+                     (s.class_roll || '').toLowerCase().includes(q) ||
+                     (s.registration_number || '').toLowerCase().includes(q);
+            })
+            .map(s => {
+              const isSelected = crIds.includes(s.id);
+              return (
+                <label
+                  key={s.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: isSelected ? 'rgba(124,58,237,0.1)' : 'var(--bg-surface-2)',
+                    border: isSelected ? '1px solid rgba(124,58,237,0.35)' : '1px solid var(--border-hairline)',
+                    cursor: 'pointer',
+                    transition: 'background 150ms ease',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => setCrIds(prev => isSelected ? prev.filter(x => x !== s.id) : [...prev, s.id])}
+                    style={{ accentColor: '#7c3aed', width: '15px', height: '15px' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {s.name}
+                      {isSelected && <span style={{ fontSize: '10px', fontWeight: 700, background: '#7c3aed', color: '#fff', borderRadius: '6px', padding: '1px 6px' }}>CR</span>}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Roll {s.class_roll} · Reg {s.registration_number}</div>
+                  </div>
+                </label>
+              );
+            })
+          }
+          {students.length === 0 && (
+            <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '12px' }}>No students found</p>
+          )}
+        </div>
+
+        {crSaveStatus && (
+          <div style={{ fontSize: '12.5px', color: crSaveStatus.startsWith('✅') ? 'var(--accent-green, #16a34a)' : 'var(--accent)', marginBottom: '10px', fontWeight: 600 }}>
+            {crSaveStatus}
+          </div>
+        )}
+
+        <button
+          className="admin-save-btn"
+          style={{ background: '#7c3aed' }}
+          onClick={async () => {
+            setCrSaveStatus('Saving...');
+            try {
+              await saveCRIds(crIds);
+              setCrSaveStatus(`✅ Saved — ${crIds.length} CR${crIds.length !== 1 ? 's' : ''} designated`);
+            } catch (err) {
+              setCrSaveStatus('❌ ' + (err.message || 'Failed to save'));
+            }
+            setTimeout(() => setCrSaveStatus(''), 3000);
+          }}
+        >
+          Save CR List ({crIds.length} selected)
+        </button>
       </section>
       </>
       )}

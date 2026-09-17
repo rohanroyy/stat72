@@ -121,6 +121,7 @@ export default function ExamCalendar({
   onAddExam,
   exams: examsProp = [],
   routineList = [],
+  holidays = [],
   currentUser = null,
   topperIds = [],
   foldersList = [],
@@ -188,6 +189,38 @@ export default function ExamCalendar({
     const raw = getRoutineForDay(selectedDate.getDay(), routineList);
     return mergeConsecutiveClasses(raw);
   }, [selectedDate, routineList]);
+
+  // ── Holiday helpers ──────────────────────────────────────────────────────────
+  const holidayDates = useMemo(() => {
+    /** Build a Set of every YYYY-MM-DD string covered by any holiday entry. */
+    const set = new Set();
+    holidays.forEach(h => {
+      if (!h.date) return;
+      if (h.isRange && h.endDate) {
+        // Walk every day in the range
+        const cur = new Date(h.date + 'T00:00:00');
+        const end = new Date(h.endDate + 'T00:00:00');
+        while (cur <= end) {
+          set.add(toDateStr(cur));
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else {
+        set.add(h.date);
+      }
+    });
+    return set;
+  }, [holidays]);
+
+  const getHolidayForDateStr = (ds) => {
+    if (!ds || !holidayDates.has(ds)) return null;
+    return holidays.find(h => {
+      if (!h.date) return false;
+      if (h.isRange && h.endDate) return ds >= h.date && ds <= h.endDate;
+      return ds === h.date;
+    }) || null;
+  };
+
+  const selectedDateHoliday = getHolidayForDateStr(selectedDateStr);
 
   const monthGrid = buildMonthGrid(activeYear, activeMonth);
   const weekStrip = buildWeekStrip(selectedDate);
@@ -320,15 +353,17 @@ export default function ExamCalendar({
               const isSelected = sameDay(cell.date, selectedDate);
               const isToday = sameDay(cell.date, today);
               const hasExams = examDates.has(ds);
+              const isHoliday = holidayDates.has(ds) && cell.current;
               return (
                 <div
                   key={idx}
-                  className={`cal-day-cell ${!cell.current ? 'other-month' : ''} ${isSelected ? 'selected' : ''} ${isToday && !isSelected ? 'today' : ''}`}
+                  className={`cal-day-cell ${!cell.current ? 'other-month' : ''} ${isSelected ? 'selected' : ''} ${isToday && !isSelected ? 'today' : ''} ${isHoliday && !isSelected ? 'cal-holiday-cell' : ''}`}
                   onClick={() => handleMonthDayClick(cell)}
                 >
                   <div className="cal-day-num">{cell.date.getDate()}</div>
                   <div className="cal-dot-row">
                     {hasExams && <span className="cal-exam-dot" />}
+                    {isHoliday && !hasExams && <span className="cal-holiday-dot" />}
                   </div>
                 </div>
               );
@@ -341,10 +376,11 @@ export default function ExamCalendar({
               const isSelected = sameDay(date, selectedDate);
               const isToday = sameDay(date, today);
               const hasExams = examDates.has(ds);
+              const isHoliday = holidayDates.has(ds);
               return (
                 <div
                   key={idx}
-                  className={`cal-week-cell ${isSelected ? 'selected' : ''} ${isToday && !isSelected ? 'today' : ''}`}
+                  className={`cal-week-cell ${isSelected ? 'selected' : ''} ${isToday && !isSelected ? 'today' : ''} ${isHoliday && !isSelected ? 'cal-holiday-cell' : ''}`}
                   onClick={() => handleWeekDayClick(date)}
                   style={{ position: 'relative' }}
                 >
@@ -357,6 +393,16 @@ export default function ExamCalendar({
                         position: 'absolute',
                         bottom: '6px',
                         background: isSelected ? '#FFFFFF' : 'var(--accent)',
+                      }}
+                    />
+                  )}
+                  {isHoliday && !hasExams && (
+                    <span
+                      className="cal-holiday-dot"
+                      style={{
+                        position: 'absolute',
+                        bottom: '6px',
+                        background: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--accent-border)',
                       }}
                     />
                   )}
@@ -460,10 +506,23 @@ export default function ExamCalendar({
                 <div className="cal-schedule-block">
                   <div className="cal-block-title">
                     <span>Scheduled Classes</span>
-                    <span className="cal-block-count">{dailyClassesList.length}</span>
+                    <span className="cal-block-count">{selectedDateHoliday ? 0 : dailyClassesList.length}</span>
                   </div>
 
-                  {dailyClassesList.length === 0 ? (
+                  {selectedDateHoliday ? (
+                    <div className="cal-holiday-notice">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="17" rx="3"/>
+                        <path d="M8 2v4M16 2v4M3 10h18"/>
+                        <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+                      </svg>
+                      <span>
+                        <b>{selectedDateHoliday.label}</b>
+                        {selectedDateHoliday.note ? ` — ${selectedDateHoliday.note}` : ''}
+                        {' · '}No classes
+                      </span>
+                    </div>
+                  ) : dailyClassesList.length === 0 ? (
                     <div className="cal-empty-sub-item">No regular classes on {selectedDayName}</div>
                   ) : (
                     <div className="cal-class-list">

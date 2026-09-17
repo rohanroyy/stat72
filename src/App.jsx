@@ -34,6 +34,8 @@ import loadingAnimation from './assets/loading.json';
 import { initExamNotifications, showUserActivityNotification } from './services/notificationService';
 import { fetchBroadcastNotifications } from './services/broadcastService';
 import { fetchUnreadCount, markAllAsRead, subscribeToMyNotifications } from './services/userNotificationService';
+import { fetchCRIds, fetchHolidays, fetchTodayOverride, fetchWeekOverride, resetWeekOverride, clearTodayOverride, mergeRoutineWithOverrides } from './services/crService';
+import CRPanel from './components/cr/CRPanel';
 
 const STORAGE_API_KEY = 'studydock_api_key';
 const STORAGE_FOLDERS_KEY = 'studydock_configured_folders';
@@ -345,6 +347,10 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   const [examsList, setExamsList] = useState(() => initialData?.exams || []);
   const [routineList, setRoutineList] = useState([]);
   const [topperIds, setTopperIds] = useState([]);
+  // CR state
+  const [crIds, setCrIds] = useState([]);
+  const [crWeekOverride, setCrWeekOverride] = useState(null);
+  const [crTodayOverride, setCrTodayOverride] = useState(null);
   const [suggestionUploadFolder, setSuggestionUploadFolder] = useState(() => {
     return initialData?.settings?.suggestionUploadFolder || localStorage.getItem('bahattor_suggestion_upload_folder') || '';
   });
@@ -414,6 +420,29 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
   useEffect(() => {
     fetchTopperIds().then(setTopperIds).catch(console.error);
   }, []);
+
+  const [holidayList, setHolidayList] = useState([]);
+
+  // Load CR IDs, overrides, and holidays on boot
+  useEffect(() => {
+    fetchCRIds().then(setCrIds).catch(console.error);
+    fetchWeekOverride().then(data => setCrWeekOverride(data || null)).catch(console.error);
+    fetchTodayOverride().then(data => setCrTodayOverride(data || null)).catch(console.error);
+    fetchHolidays().then(setHolidayList).catch(console.error);
+  }, []);
+
+  // Reload overrides + holidays when CR panel saves changes
+  const handleCROverrideSaved = () => {
+    fetchWeekOverride().then(data => setCrWeekOverride(data || null)).catch(console.error);
+    fetchTodayOverride().then(data => setCrTodayOverride(data || null)).catch(console.error);
+    fetchHolidays().then(setHolidayList).catch(console.error);
+  };
+
+  // Merged routine (base + CR overrides)
+  const effectiveRoutineList = React.useMemo(
+    () => mergeRoutineWithOverrides(routineList, crWeekOverride, crTodayOverride),
+    [routineList, crWeekOverride, crTodayOverride]
+  );
 
   // Initialize push notifications for upcoming exams/events
   useEffect(() => {
@@ -988,10 +1017,28 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         <Dashboard
           student={currentUser}
           exams={examsList}
-          routineList={routineList}
+          routineList={effectiveRoutineList}
+          holidays={holidayList}
+          isCR={crIds.includes(currentUser?.id)}
           onProfileUpdate={handleProfileUpdate}
           onLogout={handleLogout}
           onChangeTab={navigateToTab}
+        />
+      );
+    }
+
+    if (activeTab === 'cr') {
+      // Guard: only CRs can access this tab
+      if (!crIds.includes(currentUser?.id)) {
+        navigateToTab('dashboard');
+        return null;
+      }
+      return (
+        <CRPanel
+          crStudent={currentUser}
+          routineList={effectiveRoutineList}
+          onBack={() => navigateToTab('dashboard')}
+          onOverrideSaved={handleCROverrideSaved}
         />
       );
     }
@@ -1001,6 +1048,7 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         <ExamCalendar
           exams={examsList}
           routineList={routineList}
+          holidays={holidayList}
           onAddExam={null} // No inline add button on calendar for general users
           currentUser={currentUser}
           topperIds={topperIds}
@@ -1017,7 +1065,9 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     if (activeTab === 'routine') {
       return (
         <RoutinePage
-          routineList={routineList}
+          routineList={effectiveRoutineList}
+          baseRoutineList={routineList}
+          holidays={holidayList}
         />
       );
     }

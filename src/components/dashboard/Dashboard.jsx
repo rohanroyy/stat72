@@ -93,7 +93,7 @@ function buildSchedule(routineList) {
   return built;
 }
 
-export default function Dashboard({ student: initialStudent, exams = [], routineList = [], onProfileUpdate, onLogout, onChangeTab }) {
+export default function Dashboard({ student: initialStudent, exams = [], routineList = [], holidays = [], isCR = false, onProfileUpdate, onLogout, onChangeTab }) {
   const [student, setStudent] = useState(initialStudent);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -616,7 +616,7 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
       </div>
 
       {/* ── Today's Classes ──────────────────────────────────────── */}
-      <TodaysClasses routineList={routineList} nowMinutes={nowMinutes} onChangeTab={onChangeTab} />
+      <TodaysClasses routineList={routineList} holidays={holidays} nowMinutes={nowMinutes} onChangeTab={onChangeTab} />
 
       {/* ── Glimpse Uploader Option Card ────────────────────────────── */}
       <GlimpseUploaderCard student={student} />
@@ -699,6 +699,34 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
           <span>No assignments yet</span>
         </div>
       </div>
+
+      {isCR && (
+        <button
+          type="button"
+          className="dash-cr-entry-card"
+          onClick={() => onChangeTab && onChangeTab('cr')}
+          aria-label="CR Panel"
+        >
+          <svg
+            className="dash-cr-card-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span className="dash-cr-card-text">CR Panel</span>
+        </button>
+      )}
+
 
       {/* ── Profile Modal ────────────────────────────────────────── */}
       {showProfileModal && (
@@ -807,9 +835,20 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
 }
 
 // ── Today's Classes Sub-Component ─────────────────────────────────────────────
-function TodaysClasses({ routineList, nowMinutes, onChangeTab }) {
+function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) {
   const todayFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
   const isWeekend = !ROUTINE_DAYS.includes(todayFull);
+
+  // Compute today's date string (YYYY-MM-DD) for holiday check
+  const todayDate = new Date();
+  const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+
+  // Check if today is a holiday
+  const todayHoliday = holidays.find(h => {
+    if (!h.date) return false;
+    if (h.isRange && h.endDate) return todayStr >= h.date && todayStr <= h.endDate;
+    return todayStr === h.date;
+  }) || null;
 
   const schedule = buildSchedule(routineList);
   const allClasses = isWeekend ? [] : mergeRoutineDay(schedule[todayFull] || []);
@@ -857,6 +896,17 @@ function TodaysClasses({ routineList, nowMinutes, onChangeTab }) {
             <path d="M12 6v6l4 2"/>
           </svg>
           <span>No classes on weekends — enjoy your break!</span>
+        </div>
+      ) : todayHoliday ? (
+        <div className="dash-no-exams dash-holiday-banner" style={{ color: '#000000' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="17" rx="3"/>
+            <path d="M8 2v4M16 2v4M3 10h18"/>
+            <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+          </svg>
+          <span style={{ color: '#000000' }}>
+            <b style={{ color: '#000000' }}>{todayHoliday.label}</b>{todayHoliday.note ? ` — ${todayHoliday.note}` : ''} · No classes today
+          </span>
         </div>
       ) : upcomingClasses.length === 0 ? (
         <div className="dash-no-exams">
