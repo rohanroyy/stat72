@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   fetchCRAnnouncements, postCRAnnouncement, deleteCRAnnouncement,
   fetchHolidays, addHoliday, updateHoliday, deleteHoliday,
@@ -7,10 +7,20 @@ import {
   weekOverrideDaysLeft,
 } from '../../services/crService';
 import { DAYS_OF_WEEK, TIME_SLOTS, DEFAULT_ROUTINE } from '../../services/routineService';
+import {
+  fetchTodayConfirmations,
+  getCourseClassTotals,
+  confirmClass,
+  unconfirmClass,
+  subscribeToConfirmations,
+} from '../../services/classConfirmationService';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CLASS_DAYS = DAYS_OF_WEEK.map(d => d.day);
 const SUBJECT_OPTIONS = ['H 401','H 402','H 403','H-404','H-405','H 406','H-407','H 408'];
+
+// Ordered list of all known subjects for the class count board
+const ALL_SUBJECTS = ['H 401','H 402','H 403','H-404','H-405','H 406','H-407','H 408'];
 
 function getTodayDayName() {
   return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
@@ -48,6 +58,78 @@ function getDefaultSlotsForDay(day) {
   return DEFAULT_ROUTINE.filter(r => r.day === day).sort((a,b) => (a.startTime||'').localeCompare(b.startTime||''));
 }
 
+/**
+ * Format time "08:00" → "8:00 AM"
+ */
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 || 12;
+  return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+/**
+ * Returns true if the given endTime (HH:MM) has already passed for today.
+ */
+function isClassEnded(endTime) {
+  if (!endTime) return false;
+  const [h, m] = endTime.split(':').map(Number);
+  const now = new Date();
+  const end = new Date();
+  end.setHours(h, m, 0, 0);
+  return now >= end;
+}
+
+/**
+ * Build confirmation items from today's routine slots.
+ * Groups consecutive same-subject entries into a single item.
+ * - 2 consecutive same-subject slots → class_count = 2 (double slot, e.g. 11:00-12:50)
+ * - 1 slot alone → class_count = 1 (single, e.g. 11:00-11:50)
+ */
+function buildConfirmItems(routineList) {
+  const today = getTodayDayName();
+  const todaySlots = (routineList || [])
+    .filter(r => r.day === today && r.subject)
+    .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+  const items = [];
+  let i = 0;
+  while (i < todaySlots.length) {
+    const curr = todaySlots[i];
+    const next = todaySlots[i + 1];
+    // Double-slot: next slot exists AND has same subject AND starts after current ends
+    if (next && next.subject === curr.subject) {
+      items.push({
+        subject: curr.subject,
+        teacher: curr.teacher || '',
+        room: curr.room || '',
+        startTime: curr.startTime,
+        endTime: next.endTime,
+        slotKey: `${curr.startTime}-${next.endTime}`,
+        defaultCount: 2,
+        label: `${fmtTime(curr.startTime)} – ${fmtTime(next.endTime)}`,
+        slots: [curr, next],
+      });
+      i += 2;
+    } else {
+      items.push({
+        subject: curr.subject,
+        teacher: curr.teacher || '',
+        room: curr.room || '',
+        startTime: curr.startTime,
+        endTime: curr.endTime,
+        slotKey: `${curr.startTime}-${curr.endTime}`,
+        defaultCount: 1,
+        label: `${fmtTime(curr.startTime)} – ${fmtTime(curr.endTime)}`,
+        slots: [curr],
+      });
+      i += 1;
+    }
+  }
+  return items;
+}
+
 // ── Minimal Icons (inline, no deps) ──────────────────────────────────────────
 const Ico = {
   back: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
@@ -62,6 +144,10 @@ const Ico = {
   calendar: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>,
   today: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>,
   week: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>,
+  confirm: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>,
+  clock: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  undo: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg>,
+  book: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
 };
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -287,7 +373,6 @@ function HolidaySection() {
     setList(updated); flash('Deleted');
   };
 
-  // Display helper: how many days for a range
   const dayCount = h => {
     if (!h.isRange || !h.endDate || !h.date) return null;
     const diff = (new Date(h.endDate) - new Date(h.date)) / 86400000;
@@ -297,7 +382,6 @@ function HolidaySection() {
   return (
     <div className="cr2-section-body">
       <form className="cr2-form" onSubmit={submit}>
-        {/* Type toggle */}
         <div className="cr2-toggle-row">
           <button type="button"
             className={`cr2-toggle-btn ${form.type === 'single' ? 'active' : ''}`}
@@ -534,6 +618,308 @@ function WeekSection({ crStudent, routineList, onSaved }) {
   );
 }
 
+// ── CONFIRM SECTION ───────────────────────────────────────────────────────────
+function ConfirmSection({ crStudent, routineList }) {
+  const [subTab, setSubTab] = useState('today'); // 'today' | 'totals'
+  const [confirmations, setConfirmations] = useState([]);
+  const [totals, setTotals] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [totalsLoading, setTotalsLoading] = useState(true);
+  // Per-item class count override: slotKey → 1 | 2
+  const [countOverrides, setCountOverrides] = useState({});
+  // Loading state per item
+  const [busy, setBusy] = useState({});
+  const [toast, setToast] = useState({ msg:'', type:'' });
+
+  const flash = (msg, type='ok') => { setToast({msg,type}); setTimeout(()=>setToast({msg:'',type:''}),3500); };
+
+  const today = getTodayStr();
+  const todayDay = getTodayDayName();
+  const isClassDay = CLASS_DAYS.includes(todayDay);
+
+  // Build all confirmation items from today's effective routine
+  const allItems = useMemo(() => buildConfirmItems(routineList), [routineList]);
+
+  // Split into ended (confirmable) and upcoming
+  const endedItems = useMemo(() => allItems.filter(item => isClassEnded(item.endTime)), [allItems]);
+  const upcomingItems = useMemo(() => allItems.filter(item => !isClassEnded(item.endTime)), [allItems]);
+
+  // Load confirmations for today
+  const loadConfirmations = useCallback(async () => {
+    try {
+      const confs = await fetchTodayConfirmations();
+      setConfirmations(confs);
+    } catch (e) {
+      console.error('[ConfirmSection] loadConfirmations:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load totals
+  const loadTotals = useCallback(async () => {
+    setTotalsLoading(true);
+    try {
+      const t = await getCourseClassTotals();
+      setTotals(t);
+    } catch (e) {
+      console.error('[ConfirmSection] loadTotals:', e);
+    } finally {
+      setTotalsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConfirmations();
+    loadTotals();
+    // Subscribe to realtime changes
+    const unsub = subscribeToConfirmations(() => {
+      loadConfirmations();
+      loadTotals();
+    });
+    return unsub;
+  }, [loadConfirmations, loadTotals]);
+
+  // Look up if an item is confirmed
+  const getConfirmation = (slotKey) => confirmations.find(c => c.slot_key === slotKey) || null;
+  const isConfirmed = (slotKey) => confirmations.some(c => c.slot_key === slotKey);
+
+  const handleConfirm = async (item) => {
+    const count = countOverrides[item.slotKey] ?? item.defaultCount;
+    setBusy(p => ({ ...p, [item.slotKey]: true }));
+    try {
+      await confirmClass({
+        date: today,
+        subject: item.subject,
+        slotKey: item.slotKey,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        classCount: count,
+        crStudent,
+      });
+      await loadConfirmations();
+      await loadTotals();
+      flash(`${item.subject} confirmed ✓`);
+    } catch (e) {
+      flash(e.message || 'Failed to confirm', 'err');
+    } finally {
+      setBusy(p => ({ ...p, [item.slotKey]: false }));
+    }
+  };
+
+  const handleUnconfirm = async (item) => {
+    setBusy(p => ({ ...p, [item.slotKey]: true }));
+    try {
+      await unconfirmClass(today, item.subject, item.slotKey);
+      await loadConfirmations();
+      await loadTotals();
+      flash('Confirmation removed');
+    } catch (e) {
+      flash(e.message || 'Failed', 'err');
+    } finally {
+      setBusy(p => ({ ...p, [item.slotKey]: false }));
+    }
+  };
+
+  const toggleCount = (slotKey, defaultCount) => {
+    setCountOverrides(p => {
+      const current = p[slotKey] ?? defaultCount;
+      return { ...p, [slotKey]: current === 2 ? 1 : 2 };
+    });
+  };
+
+  // Max total for bar chart
+  const maxTotal = Math.max(1, ...Object.values(totals));
+
+  return (
+    <div className="cr2-section-body cr-confirm-section">
+      {/* Sub-tab switcher */}
+      <div className="cr-confirm-subtab-row">
+        <button
+          className={`cr-confirm-subtab ${subTab === 'today' ? 'active' : ''}`}
+          onClick={() => setSubTab('today')}
+        >
+          {Ico.clock}
+          <span>Today's Classes</span>
+        </button>
+        <button
+          className={`cr-confirm-subtab ${subTab === 'totals' ? 'active' : ''}`}
+          onClick={() => setSubTab('totals')}
+        >
+          {Ico.book}
+          <span>Class Count</span>
+        </button>
+      </div>
+
+      <Toast msg={toast.msg} type={toast.type} />
+
+      {/* ── TODAY'S CLASSES ── */}
+      {subTab === 'today' && (
+        <div className="cr-confirm-today">
+          {!isClassDay ? (
+            <div className="cr-confirm-empty">
+              <div className="cr-confirm-empty-icon">📅</div>
+              <p>{todayDay} is not a class day.</p>
+            </div>
+          ) : loading ? (
+            <div className="cr2-loading">Loading today's classes…</div>
+          ) : allItems.length === 0 ? (
+            <div className="cr-confirm-empty">
+              <div className="cr-confirm-empty-icon">📭</div>
+              <p>No classes scheduled for today.</p>
+              <span>Check the Today / Week tabs to set today's schedule.</span>
+            </div>
+          ) : (
+            <>
+              {/* Ended classes — confirmable */}
+              {endedItems.length > 0 && (
+                <>
+                  <SectionHead label="Ended — ready to confirm" count={endedItems.length} />
+                  <div className="cr-confirm-list">
+                    {endedItems.map(item => {
+                      const confirmed = isConfirmed(item.slotKey);
+                      const conf = getConfirmation(item.slotKey);
+                      const isBusy = busy[item.slotKey];
+                      const displayCount = confirmed
+                        ? (conf?.class_count ?? item.defaultCount)
+                        : (countOverrides[item.slotKey] ?? item.defaultCount);
+
+                      return (
+                        <div
+                          key={item.slotKey}
+                          className={`cr-confirm-card ${confirmed ? 'cr-confirm-card-confirmed' : ''}`}
+                        >
+                          <div className="cr-confirm-card-header">
+                            <div className="cr-confirm-card-left">
+                              <span className="cr-confirm-subject">{item.subject}</span>
+                              <span className="cr-confirm-time">{item.label}</span>
+                              {item.teacher && <span className="cr-confirm-meta">{item.teacher}{item.room ? ` · ${item.room}` : ''}</span>}
+                            </div>
+                            <div className="cr-confirm-card-right">
+                              {/* Class count badge + toggle */}
+                              <button
+                                className={`cr-confirm-count-badge ${displayCount === 2 ? 'double' : 'single'}`}
+                                onClick={() => !confirmed && toggleCount(item.slotKey, item.defaultCount)}
+                                disabled={confirmed}
+                                title={confirmed ? 'Already confirmed — undo to change' : `Click to toggle: currently ${displayCount} class${displayCount > 1 ? 'es' : ''}`}
+                                aria-label={`Class count: ${displayCount}. ${confirmed ? 'Confirmed' : 'Tap to toggle'}`}
+                              >
+                                ×{displayCount}
+                              </button>
+                            </div>
+                          </div>
+
+                          {confirmed && conf?.confirmed_by_name && (
+                            <div className="cr-confirm-by">
+                              {Ico.check}
+                              <span>Confirmed by {conf.confirmed_by_name} · {relTime(conf.confirmed_at)}</span>
+                            </div>
+                          )}
+
+                          <div className="cr-confirm-actions">
+                            {confirmed ? (
+                              <button
+                                className="cr-confirm-undo-btn"
+                                onClick={() => handleUnconfirm(item)}
+                                disabled={isBusy}
+                              >
+                                {isBusy ? 'Undoing…' : <>{Ico.undo} Undo</>}
+                              </button>
+                            ) : (
+                              <button
+                                className="cr-confirm-btn"
+                                onClick={() => handleConfirm(item)}
+                                disabled={isBusy}
+                              >
+                                {isBusy ? 'Confirming…' : <>{Ico.check} Confirm class</>}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Upcoming classes — not yet ended */}
+              {upcomingItems.length > 0 && (
+                <>
+                  <SectionHead label="Upcoming — not ended yet" count={upcomingItems.length} />
+                  <div className="cr-confirm-list">
+                    {upcomingItems.map(item => (
+                      <div key={item.slotKey} className="cr-confirm-card cr-confirm-card-upcoming">
+                        <div className="cr-confirm-card-header">
+                          <div className="cr-confirm-card-left">
+                            <span className="cr-confirm-subject">{item.subject}</span>
+                            <span className="cr-confirm-time">{item.label}</span>
+                            {item.teacher && <span className="cr-confirm-meta">{item.teacher}{item.room ? ` · ${item.room}` : ''}</span>}
+                          </div>
+                          <span className={`cr-confirm-count-badge ${item.defaultCount === 2 ? 'double' : 'single'} muted`}>
+                            ×{item.defaultCount}
+                          </span>
+                        </div>
+                        <div className="cr-upcoming-note">
+                          {Ico.clock}
+                          <span>Ends at {fmtTime(item.endTime)} — will be available for confirmation then</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {endedItems.length === 0 && upcomingItems.length > 0 && (
+                <div className="cr-confirm-empty" style={{ marginTop: '8px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+                    No classes have ended yet today. Come back after {fmtTime(upcomingItems[0]?.endTime)}.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── CLASS COUNT BOARD ── */}
+      {subTab === 'totals' && (
+        <div className="cr-confirm-totals">
+          <p className="cr-totals-desc">
+            Total classes confirmed per course across all dates.
+          </p>
+          {totalsLoading ? (
+            <div className="cr2-loading">Loading totals…</div>
+          ) : (
+            <div className="cr-totals-grid">
+              {ALL_SUBJECTS.map(subject => {
+                const count = totals[subject] || 0;
+                const pct = maxTotal > 0 ? (count / maxTotal) * 100 : 0;
+                return (
+                  <div key={subject} className="cr-totals-card">
+                    <div className="cr-totals-card-top">
+                      <span className="cr-totals-subject">{subject}</span>
+                      <span className="cr-totals-count">{count}</span>
+                    </div>
+                    <div className="cr-totals-bar-track">
+                      <div
+                        className="cr-totals-bar-fill"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="cr-totals-label">
+                      {count === 0 ? 'No classes confirmed yet' : `${count} class${count !== 1 ? 'es' : ''} held`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ROOT CR PANEL ─────────────────────────────────────────────────────────────
 export default function CRPanel({ crStudent, routineList = [], onBack, onOverrideSaved }) {
   const initials = (crStudent?.name||'CR').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
@@ -556,6 +942,7 @@ export default function CRPanel({ crStudent, routineList = [], onBack, onOverrid
     { id: 'holiday', label: 'Holidays', icon: Ico.calendar },
     { id: 'today', label: 'Today', icon: Ico.today },
     { id: 'week', label: 'Week', icon: Ico.week },
+    { id: 'confirm', label: 'Confirm', icon: Ico.confirm },
   ];
   const activeLabel = tools.find(tool => tool.id === activeTool)?.label;
 
@@ -589,6 +976,7 @@ export default function CRPanel({ crStudent, routineList = [], onBack, onOverrid
             {activeTool === 'holiday' && <HolidaySection />}
             {activeTool === 'today' && <TodaySection crStudent={crStudent} routineList={routineList} onSaved={onOverrideSaved} />}
             {activeTool === 'week' && <WeekSection crStudent={crStudent} routineList={routineList} onSaved={onOverrideSaved} />}
+            {activeTool === 'confirm' && <ConfirmSection crStudent={crStudent} routineList={routineList} />}
           </div>
         </section>
       </main>

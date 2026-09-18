@@ -243,7 +243,8 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
         state?.confusionPanel ||
         state?.suggFolderViewer ||
         state?.viewerOpen ||
-        state?.glimpseOverlay
+        state?.glimpseOverlay ||
+        state?.panel
       ) return;
 
       const tab = state?.tab;

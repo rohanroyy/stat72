@@ -1,28 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-// import ImposterGame from './ImposterGame'; // hidden until ready
 import GlimpseViewerTray from '../glimpse/GlimpseViewerTray';
+import { getCourseClassTotals, subscribeToConfirmations } from '../../services/classConfirmationService';
+import ClassCountPanel from './ClassCountPanel';
 
 /**
- * FloatingMoodBubble — two-layer architecture:
- *
- *  <div class="mood-float-track">   ← outer: handles CSS keyframe float animation
- *    <div class="mood-drag-layer">  ← inner: handles drag offset via direct DOM translate3d
- *      ... bubble content ...
- *    </div>
- *  </div>
- *
- * Keeping animation and drag on SEPARATE elements means they never
- * fight over the `transform` property, so animations keep running
- * even after a bubble is dragged to a new position.
+ * FloatingMoodBubble — two-layer architecture
  */
 function FloatingMoodBubble({ student, style, initials }) {
   const dragLayerRef = useRef(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ mouseX: 0, mouseY: 0 });
-  const accOffset = useRef({ x: 0, y: 0 }); // accumulated offset that persists across drags
+  const accOffset = useRef({ x: 0, y: 0 });
 
-  // Register global listeners once — use refs inside to avoid stale closures
   useEffect(() => {
     const handleMove = (e) => {
       if (!isDragging.current) return;
@@ -38,7 +28,6 @@ function FloatingMoodBubble({ student, style, initials }) {
       const nx = accOffset.current.x + dx;
       const ny = accOffset.current.y + dy;
 
-      // Update DOM directly — zero React re-render overhead → 60fps
       const el = dragLayerRef.current;
       if (el) el.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
     };
@@ -57,7 +46,6 @@ function FloatingMoodBubble({ student, style, initials }) {
         };
       }
 
-      // Restore cursor & restore float-track animation (just remove class flag from drag layer)
       const el = dragLayerRef.current;
       if (el) {
         el.style.cursor = 'grab';
@@ -77,7 +65,7 @@ function FloatingMoodBubble({ student, style, initials }) {
       window.removeEventListener('touchend', handleEnd);
       window.removeEventListener('touchcancel', handleEnd);
     };
-  }, []); // ← empty deps: register once, use refs inside
+  }, []);
 
   const handleStart = (e) => {
     if (e.button !== undefined && e.button !== 0) return;
@@ -95,7 +83,6 @@ function FloatingMoodBubble({ student, style, initials }) {
   };
 
   return (
-    // OUTER: float animation lives here — never gets an inline transform from drag
     <div
       className="mood-float-track"
       style={{
@@ -114,14 +101,12 @@ function FloatingMoodBubble({ student, style, initials }) {
         zIndex: 5,
       }}
     >
-      {/* INNER: drag offset lives here — has no animation, no conflict */}
       <div
         ref={dragLayerRef}
         className="mood-bubble-wrapper"
         onMouseDown={handleStart}
         onTouchStart={handleStart}
         style={{
-          /* initial transform — 0,0 so translate3d doesn't conflict with parent animation */
           transform: 'translate3d(0px, 0px, 0)',
           cursor: 'grab',
           userSelect: 'none',
@@ -147,13 +132,16 @@ function FloatingMoodBubble({ student, style, initials }) {
   );
 }
 
+// ── Main Explore Page ─────────────────────────────────────────────────────────
 export default function ExplorePage({ currentUser: propUser }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bubbleStyles, setBubbleStyles] = useState([]);
-  // const [showImposterGame, setShowImposterGame] = useState(false); // hidden until ready
-
   const [currentStudent, setCurrentStudent] = useState(propUser || null);
+
+  // Dedicated panel state
+  const [showClassCountPanel, setShowClassCountPanel] = useState(false);
+  const [totals, setTotals] = useState({});
 
   useEffect(() => {
     if (!currentStudent) {
@@ -163,6 +151,32 @@ export default function ExplorePage({ currentUser: propUser }) {
       } catch (_) { }
     }
   }, [currentStudent]);
+
+  // Pre-load totals & subscribe to realtime updates
+  useEffect(() => {
+    let mounted = true;
+    const loadTotals = async () => {
+      try {
+        const t = await getCourseClassTotals();
+        if (mounted && t && typeof t === 'object') setTotals(t);
+      } catch (e) {
+        console.error('[ExplorePage] Failed to load course totals:', e);
+      }
+    };
+
+    loadTotals();
+    let unsub = () => {};
+    try {
+      unsub = subscribeToConfirmations(() => {
+        loadTotals();
+      }) || (() => {});
+    } catch (_) {}
+
+    return () => {
+      mounted = false;
+      try { unsub(); } catch (_) {}
+    };
+  }, []);
 
   useEffect(() => {
     async function loadMoods() {
@@ -201,7 +215,6 @@ export default function ExplorePage({ currentUser: propUser }) {
     loadMoods();
   }, []);
 
-  // Reactive board width — updates on resize via ResizeObserver
   const [boardWidth, setBoardWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -213,16 +226,13 @@ export default function ExplorePage({ currentUser: propUser }) {
       }
     });
     ro.observe(el);
-    // Set initial width immediately
     setBoardWidth(el.offsetWidth || window.innerWidth);
     return () => ro.disconnect();
-  }, [loading]); // re-attach after loading is done and board is in DOM
+  }, [loading]);
 
-  // ── Grid config (derived from boardWidth) ──────────────────────────
   const COLS    = boardWidth >= 600 ? 6 : 3;
   const CELL_W  = Math.floor(boardWidth / COLS);
   const CELL_H  = 110;
-  // Bubble is ~100px wide, ~90px tall — offset to anchor from top-left, not center
   const BUB_W   = 100;
   const BUB_H   = 90;
 
@@ -235,7 +245,6 @@ export default function ExplorePage({ currentUser: propUser }) {
       const col = idx % COLS;
       const row = Math.floor(idx / COLS);
 
-      // Top-left of where bubble should be placed (cell center minus half bubble size)
       const bx = col * CELL_W + (CELL_W - BUB_W) / 2 + (Math.floor(Math.random() * JITTER * 2) - JITTER);
       const by = row * CELL_H + (CELL_H - BUB_H) / 2 + (Math.floor(Math.random() * JITTER * 2) - JITTER);
 
@@ -246,7 +255,6 @@ export default function ExplorePage({ currentUser: propUser }) {
       return {
         left: `${Math.max(0, bx)}px`,
         top:  `${Math.max(0, by)}px`,
-        // NO transform here — float-drift keyframes use transform; adding one here would conflict
         animationName:     `float-drift-${animIdx}`,
         animationDuration: `${speed}s`,
         animationDelay:    `${delay}s`,
@@ -258,21 +266,35 @@ export default function ExplorePage({ currentUser: propUser }) {
     });
 
     setBubbleStyles(styles);
-  }, [students, boardWidth, COLS, CELL_W]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [students, boardWidth, COLS, CELL_W]);
 
-  // Board height: ceil(bubbles / cols) rows × CELL_H, min 180px
   const boardHeight = students.length === 0
     ? 180
     : Math.max(180, Math.ceil(students.length / COLS) * CELL_H + 20);
 
-
-  // Imposter Game hidden until ready
-  // if (showImposterGame) {
-  //   return <ImposterGame onClose={() => setShowImposterGame(false)} />;
-  // }
+  // If the Class Counting Board panel is opened, render it in pure light theme
+  if (showClassCountPanel) {
+    return (
+      <div
+        className="explore-container"
+        style={{
+          background: '#ffffff',
+          minHeight: '100vh',
+          width: '100%',
+          maxWidth: '900px',
+          margin: '0 auto',
+        }}
+      >
+        <ClassCountPanel
+          onBack={() => setShowClassCountPanel(false)}
+          initialTotals={totals}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="explore-container">
+    <div className="explore-container" style={{ background: '#ffffff', minHeight: '100vh' }}>
       <div className="explore-header">
         <h2>Explore বাহাত্তর</h2>
       </div>
@@ -322,14 +344,37 @@ export default function ExplorePage({ currentUser: propUser }) {
       {/* Section 1.5: Glimpse Photo Viewing Option Tray */}
       <GlimpseViewerTray currentStudent={currentStudent} />
 
-      {/* Section 2: Guess the Imposter — HIDDEN until ready */}
-      {/* <div className="explore-section">
-        <span className="section-label-text">Guess the Imposter</span>
-        <div className="section-label-line" />
-        <div className="explore-game-card" onClick={() => setShowImposterGame(true)}>
-          ...
+      {/* Section 2: Orange Theme Class Count Board Card */}
+      <div className="explore-section">
+        <div
+          className="explore-class-count-card-orange"
+          onClick={() => setShowClassCountPanel(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowClassCountPanel(true);
+            }
+          }}
+          aria-label="Open Class Count Board"
+        >
+          <div className="explore-class-count-card-left">
+            <div className="explore-class-count-card-icon-orange">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+            </div>
+            <span className="explore-class-count-card-title-orange">Class Count Board</span>
+          </div>
+          <div className="explore-class-count-card-arrow-orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
         </div>
-      </div> */}
+      </div>
 
       {/* Section 3: Coming Soon */}
       <div className="explore-section explore-coming-soon-section">

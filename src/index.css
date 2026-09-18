@@ -10723,4 +10723,683 @@ body:has(.viewer-overlay) .bottom-nav-wrapper {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   CR PANEL — CONFIRM SECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Sub-tab switcher */
+.cr-confirm-subtab-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.cr-confirm-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  font-family: var(--font-body);
+}
+
+.cr-confirm-subtab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cr-confirm-subtab:not(.active):hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.cr-confirm-subtab svg {
+  flex-shrink: 0;
+}
+
+/* Empty states */
+.cr-confirm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+.cr-confirm-empty-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.cr-confirm-empty p {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.cr-confirm-empty span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* Confirm list */
+.cr-confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Confirm card */
+.cr-confirm-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.cr-confirm-card-confirmed {
+  border-color: rgba(72, 199, 142, 0.4);
+  background: rgba(72, 199, 142, 0.05);
+}
+
+.cr-confirm-card-upcoming {
+  opacity: 0.65;
+}
+
+.cr-confirm-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 8px;
+}
+
+.cr-confirm-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cr-confirm-subject {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.cr-confirm-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.cr-confirm-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.cr-confirm-card-right {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* Class count badge */
+.cr-confirm-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+  font-family: var(--font-body);
+  user-select: none;
+}
+
+.cr-confirm-count-badge.single {
+  background: rgba(170, 170, 170, 0.15);
+  color: var(--text-secondary);
+}
+
+.cr-confirm-count-badge.double {
+  background: rgba(240, 160, 32, 0.18);
+  color: #F0A020;
+}
+
+.cr-confirm-count-badge:not(:disabled):hover {
+  transform: scale(1.08);
+}
+
+.cr-confirm-count-badge:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.cr-confirm-count-badge.muted {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Confirmed-by line */
+.cr-confirm-by {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 14px 6px;
+  font-size: 11px;
+  color: #48c78e;
+}
+
+.cr-confirm-by svg {
+  flex-shrink: 0;
+}
+
+/* Actions row */
+.cr-confirm-actions {
+  padding: 6px 10px 10px;
+}
+
+.cr-confirm-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+  font-family: var(--font-body);
+}
+
+.cr-confirm-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.cr-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cr-confirm-undo-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+  font-family: var(--font-body);
+}
+
+.cr-confirm-undo-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cr-confirm-undo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Upcoming note */
+.cr-upcoming-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ── Class Count sub-tab in CR Panel ── */
+.cr-confirm-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cr-totals-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding-bottom: 4px;
+}
+
+.cr-totals-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cr-totals-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+
+.cr-totals-card:hover {
+  border-color: rgba(232, 71, 43, 0.3);
+}
+
+.cr-totals-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cr-totals-subject {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cr-totals-count {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.cr-totals-bar-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.cr-totals-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #F07055);
+  border-radius: var(--radius-pill);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width: 3px;
+}
+
+.cr-totals-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   EXPLORE PAGE — SIMPLE LIGHT CLASS COUNT BOARD CARD & PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Orange Theme Card on Explore Page */
+.explore-class-count-card-orange {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #E8472B 0%, #FF5A36 100%);
+  border: 1px solid #E8472B;
+  border-radius: 18px;
+  padding: 18px 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(232, 71, 43, 0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+}
+
+.explore-class-count-card-orange:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(232, 71, 43, 0.38);
+}
+
+.explore-class-count-card-orange:active {
+  transform: scale(0.99);
+}
+
+.explore-class-count-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.explore-class-count-card-icon-orange {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.explore-class-count-card-title-orange {
+  font-size: 16.5px;
+  font-weight: 750;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.explore-class-count-card-arrow-orange {
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  transition: transform 0.18s ease;
+}
+
+.explore-class-count-card-orange:hover .explore-class-count-card-arrow-orange {
+  transform: translateX(4px);
+}
+
+/* Simple Light Card fallback on Explore Page */
+.explore-simple-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+}
+
+.explore-simple-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.explore-simple-card:active {
+  transform: scale(0.99);
+}
+
+.explore-simple-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.explore-simple-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(232, 71, 43, 0.09);
+  color: var(--accent, #E8472B);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.explore-simple-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: -0.01em;
+}
+
+.explore-simple-card-arrow {
+  color: #94a3b8;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.explore-simple-card:hover .explore-simple-card-arrow {
+  transform: translateX(3px);
+  color: var(--accent, #E8472B);
+}
+
+/* ── Light-Theme ClassCountPanel ── */
+.ccp-light-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  animation: ccp-fade-in 0.2s ease-out;
+}
+
+@keyframes ccp-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ccp-light-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.ccp-light-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #111111;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.ccp-light-back-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: var(--accent, #E8472B);
+}
+
+.ccp-light-heading {
+  font-size: 20px;
+  font-weight: 750;
+  color: #111111;
+  margin: 0;
+}
+
+.ccp-light-summary-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.ccp-light-summary-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(232, 71, 43, 0.09);
+  color: var(--accent, #E8472B);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 14px;
+}
+
+.ccp-light-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.ccp-light-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ccp-light-summary-count {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.ccp-light-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+/* Course list */
+.ccp-light-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ccp-light-course-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ccp-light-course-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.ccp-light-course-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ccp-light-subject-code {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111111;
+  letter-spacing: 0.01em;
+}
+
+.ccp-light-subject-meta {
+  font-size: 13px;
+  color: #666666;
+  margin-left: 8px;
+}
+
+.ccp-light-count-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.ccp-light-count-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent, #E8472B);
+  line-height: 1;
+}
+
+.ccp-light-count-unit {
+  font-size: 11px;
+  color: #888888;
+  font-weight: 500;
+}
+
+.ccp-light-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.ccp-light-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent, #E8472B), #F07055);
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ccp-light-info-note {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.ccp-light-info-note svg {
+  color: var(--accent, #E8472B);
+  flex-shrink: 0;
+}
+
+.ccp-light-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px;
+  color: #888888;
+  font-size: 13.5px;
+}
+
+
+
 
