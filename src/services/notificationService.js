@@ -57,7 +57,8 @@ function parseSubject(exam) {
 
 // ── Show a single notification ────────────────────────────────────────────────
 
-async function showNotification(title, body, tag) {
+export async function showNotification(title, body, tag, url = '/') {
+  if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
   // Primary: post to SW — most reliable on mobile PWAs
@@ -69,7 +70,7 @@ async function showNotification(title, body, tag) {
           type: 'SHOW_NOTIFICATION',
           title,
           body,
-          url: '/',
+          url,
           tag,
         });
         return;
@@ -78,14 +79,22 @@ async function showNotification(title, body, tag) {
   }
 
   // Fallback: plain Notification API
-  new Notification(title, {
-    body,
-    tag,
-    icon: '/pwa-192x192.png',
-    badge: '/favicon.png',
-    requireInteraction: false,
-    data: { url: '/' },
-  });
+  try {
+    const n = new Notification(title, {
+      body,
+      tag,
+      icon: '/pwa-192x192.png',
+      badge: '/favicon.png',
+      requireInteraction: false,
+      data: { url },
+    });
+    n.onclick = () => {
+      window.focus();
+      if (url) window.location.href = url;
+    };
+  } catch (err) {
+    console.error('[notificationService] Notification error:', err);
+  }
 }
 
 

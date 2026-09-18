@@ -38,16 +38,21 @@ export async function fetchBroadcastNotifications() {
   }
 }
 
-export async function sendBroadcastNotification(title, body, target = "all") {
+export async function sendBroadcastNotification(title, body, target = "all", customId = null, actionUrl = null) {
+  const notifId = customId || `notif_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const newNotif = {
-    id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: notifId,
     title: title.trim(),
     body: body.trim(),
     target,
+    action_url: actionUrl || null,
     created_at: new Date().toISOString(),
   };
   if (!isSupabaseConfigured()) {
     const list = await fetchBroadcastNotifications();
+    if (customId && list.some(n => n.id === customId)) {
+      return list;
+    }
     list.unshift(newNotif);
     const pruned = list.slice(0, 20);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(pruned));
@@ -55,6 +60,9 @@ export async function sendBroadcastNotification(title, body, target = "all") {
     return pruned;
   }
   const currentList = await fetchBroadcastNotifications();
+  if (customId && currentList.some(n => n.id === customId)) {
+    return currentList;
+  }
   currentList.unshift(newNotif);
   const pruned = currentList.slice(0, 20);
   await saveSetting("broadcast_notifications", pruned);

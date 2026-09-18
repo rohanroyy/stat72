@@ -99,8 +99,21 @@ function formatSubTime(isoString) {
 // ── Broadcast row (system broadcasts, no dismiss on these) ────────────────────
 
 function BroadcastRow({ item }) {
+  const targetUrl = item.action_url || (item.id?.startsWith('class_reminder_') ? '/?tab=routine' : null);
+  const handleClick = () => {
+    if (targetUrl) {
+      window.location.href = targetUrl;
+    }
+  };
+
   return (
-    <div className="notif-row">
+    <div
+      className={`notif-row ${targetUrl ? 'notif-row--clickable' : ''}`}
+      onClick={targetUrl ? handleClick : undefined}
+      role={targetUrl ? 'button' : undefined}
+      tabIndex={targetUrl ? 0 : undefined}
+      onKeyDown={(e) => { if (targetUrl && (e.key === 'Enter' || e.key === ' ')) handleClick(); }}
+    >
       <div className="notif-avatar notif-avatar--system">
         <BellIcon />
       </div>

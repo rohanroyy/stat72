@@ -3,9 +3,12 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import GlimpseViewerTray from '../glimpse/GlimpseViewerTray';
 import { getCourseClassTotals, subscribeToConfirmations } from '../../services/classConfirmationService';
 import ClassCountPanel from './ClassCountPanel';
+import ClassRatingsPanel from './ClassRatingsPanel';
+import CoursesPanel from './CoursesPanel';
+import CourseDetailPage from './CourseDetailPage';
 
 /**
- * FloatingMoodBubble — two-layer architecture
+ * FloatingMoodBubble â€” two-layer architecture
  */
 function FloatingMoodBubble({ student, style, initials }) {
   const dragLayerRef = useRef(null);
@@ -132,7 +135,7 @@ function FloatingMoodBubble({ student, style, initials }) {
   );
 }
 
-// ── Main Explore Page ─────────────────────────────────────────────────────────
+// â”€â”€ Main Explore Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ExplorePage({ currentUser: propUser }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +144,9 @@ export default function ExplorePage({ currentUser: propUser }) {
 
   // Dedicated panel state
   const [showClassCountPanel, setShowClassCountPanel] = useState(false);
+  const [showRatingsPanel, setShowRatingsPanel] = useState(false);
+  // coursesView: null | 'list' | courseObject
+  const [coursesView, setCoursesView] = useState(null);
   const [totals, setTotals] = useState({});
 
   useEffect(() => {
@@ -272,19 +278,44 @@ export default function ExplorePage({ currentUser: propUser }) {
     ? 180
     : Math.max(180, Math.ceil(students.length / COLS) * CELL_H + 20);
 
-  // If the Class Counting Board panel is opened, render it in pure light theme
+  // If a course detail is open
+  if (coursesView && typeof coursesView === 'object') {
+    return (
+      <div className="explore-subpage-wrapper">
+        <CourseDetailPage
+          course={coursesView}
+          currentUser={currentStudent}
+          onBack={() => setCoursesView('list')}
+        />
+      </div>
+    );
+  }
+
+  // If the Courses list panel is open
+  if (coursesView === 'list') {
+    return (
+      <div className="explore-subpage-wrapper">
+        <CoursesPanel
+          onBack={() => setCoursesView(null)}
+          onSelectCourse={(course) => setCoursesView(course)}
+        />
+      </div>
+    );
+  }
+
+  // If the Ratings panel is opened, render it
+  if (showRatingsPanel) {
+    return (
+      <div className="explore-subpage-wrapper">
+        <ClassRatingsPanel onBack={() => setShowRatingsPanel(false)} />
+      </div>
+    );
+  }
+
+  // If the Class Counting Board panel is opened, render it
   if (showClassCountPanel) {
     return (
-      <div
-        className="explore-container"
-        style={{
-          background: '#ffffff',
-          minHeight: '100vh',
-          width: '100%',
-          maxWidth: '900px',
-          margin: '0 auto',
-        }}
-      >
+      <div className="explore-subpage-wrapper">
         <ClassCountPanel
           onBack={() => setShowClassCountPanel(false)}
           initialTotals={totals}
@@ -376,6 +407,69 @@ export default function ExplorePage({ currentUser: propUser }) {
         </div>
       </div>
 
+      {/* Section 2b: Class Ratings Card */}
+      <div className="explore-section">
+        <div
+          className="explore-ratings-card"
+          onClick={() => setShowRatingsPanel(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowRatingsPanel(true);
+            }
+          }}
+          aria-label="Open Class Ratings"
+        >
+          <div className="explore-class-count-card-left">
+            <div className="explore-ratings-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <span className="explore-ratings-card-title">Class Ratings</span>
+          </div>
+          <div className="explore-class-count-card-arrow-orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 2c: Courses Card */}
+      <div className="explore-section">
+        <div
+          className="explore-courses-card"
+          onClick={() => setCoursesView('list')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setCoursesView('list');
+            }
+          }}
+          aria-label="Open Courses"
+        >
+          <div className="explore-class-count-card-left">
+            <div className="explore-courses-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+              </svg>
+            </div>
+            <span className="explore-courses-card-title">Courses</span>
+          </div>
+          <div className="explore-courses-card-arrow">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
       {/* Section 3: Coming Soon */}
       <div className="explore-section explore-coming-soon-section">
         <span className="section-label-text">Other Features</span>
@@ -393,3 +487,4 @@ export default function ExplorePage({ currentUser: propUser }) {
     </div>
   );
 }
+

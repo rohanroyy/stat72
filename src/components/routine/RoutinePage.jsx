@@ -1,8 +1,24 @@
 import React, { useMemo, useState } from 'react';
+import { SUBJECT_META } from '../explore/ClassCountPanel';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 const TIMES = ['8.00-8.50', '9.00-9.50', '10.00-10.50', '11.00-11.50', '12.00-12.50', '1.00-2.00', '2.00-2.50', '3.00-3.50'];
 const SUBJECT_TONES = { 'H-401': 'blue', 'H-402': 'violet', 'H-403': 'violet', 'H-404': 'coral', 'H-405': 'gold', 'H-406': 'rose', 'H-407': 'blue', 'H-408': 'coral' };
+
+export function formatRoutineTime(timeStr) {
+  if (!timeStr) return '';
+  const parts = String(timeStr).split('-');
+  if (parts.length !== 2) return timeStr;
+  const to12h = (s) => {
+    const [h, m = '00'] = s.trim().split('.');
+    let hour = parseInt(h, 10);
+    if (isNaN(hour)) return s.trim();
+    const isPM = hour === 12 || (hour >= 1 && hour <= 6);
+    return `${hour}:${m.padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+  };
+  return `${to12h(parts[0])} – ${to12h(parts[1])}`;
+}
+
 const DEFAULT_SCHEDULE = {
   Sunday: [null, null, { code: 'H-406', room: '402', teacher: 'JAK' }, { code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-405', room: '402', teacher: 'MI' }, 'break', null, null],
   Monday: [null, null, { code: 'H-402', room: '402', teacher: 'FA' }, { code: 'H-401', room: '436', teacher: 'BH' }, { code: 'H-401', room: '436', teacher: 'BH' }, 'break', { code: 'H-408', room: '401', teacher: 'JHK' }, { code: 'H-408', room: '401', teacher: 'JHK' }],
@@ -37,7 +53,7 @@ function getDateStrForDayName(dayName) {
   const diff = (dayIndex - now.getDay() + 7) % 7;
   const target = new Date(now);
   target.setDate(now.getDate() + diff);
-  return `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`;
 }
 
 /** Check if a YYYY-MM-DD date falls on any holiday. */
@@ -50,18 +66,40 @@ function findHolidayForDate(dateStr, holidays) {
   }) || null;
 }
 
-const CalendarIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>;
-const GridIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
-const PinIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>;
-const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6"/></svg>;
-const ChevronIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>;
+const CalendarIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M8 2v4M16 2v4M3 10h18" /></svg>;
+const GridIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+const PinIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
+const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4" /><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6" /></svg>;
+const ChevronIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>;
 
 function buildSchedule(items) {
   if (!items || !items.length) return DEFAULT_SCHEDULE;
-  const startIndex = { '08:00': 0, '8:00': 0, '8.00': 0, '09:00': 1, '9:00': 1, '9.00': 1, '10:00': 2, '10.00': 2, '11:00': 3, '11.00': 3, '12:00': 4, '12.00': 4, '14:00': 6, '2:00': 6, '2.00': 6, '15:00': 7, '3:00': 7, '3.00': 7 };
+  const startIndex = {
+    '08:00': 0, '8:00': 0, '8.00': 0, '08:00:00': 0, '8:00:00': 0,
+    '09:00': 1, '9:00': 1, '9.00': 1, '09:00:00': 1, '9:00:00': 1,
+    '10:00': 2, '10.00': 2, '10:00:00': 2,
+    '11:00': 3, '11.00': 3, '11:00:00': 3,
+    '12:00': 4, '12.00': 4, '12:00:00': 4,
+    '13:00': 5, '1:00': 5, '1.00': 5, '13:00:00': 5, '01:00:00': 5, '1:00:00': 5,
+    '14:00': 6, '2:00': 6, '2.00': 6, '14:00:00': 6, '02:00:00': 6, '2:00:00': 6,
+    '15:00': 7, '3:00': 7, '3.00': 7, '15:00:00': 7, '03:00:00': 7, '3:00:00': 7,
+  };
+  const slotIndexMap = {
+    '8.00-8.50': 0, '8:00-8:50': 0, '8:00 - 8:50': 0,
+    '9.00-9.50': 1, '9:00-9:50': 1, '9:00 - 9:50': 1,
+    '10.00-10.50': 2, '10:00-10:50': 2, '10:00 - 10:50': 2,
+    '11.00-11.50': 3, '11:00-11:50': 3, '11:00 - 11:50': 3,
+    '12.00-12.50': 4, '12:00-12.50': 4, '12:00 - 12:50': 4,
+    '1.00-2.00': 5, '1:00-2:00': 5, '1:00 - 2:00': 5,
+    '2.00-2.50': 6, '2:00-2:50': 6, '2:00 - 2:50': 6,
+    '3.00-3.50': 7, '3:00-3:50': 7, '3:00 - 3:50': 7,
+  };
   const built = Object.fromEntries(DAYS.map((day) => [day, [null, null, null, null, null, 'break', null, null]]));
   items.forEach((item) => {
-    const index = startIndex[String(item.startTime || '').trim()];
+    let index = startIndex[String(item.startTime || '').trim()];
+    if (index === undefined && item.timeSlot) {
+      index = slotIndexMap[String(item.timeSlot).trim()];
+    }
     if (built[item.day] && index !== undefined && index !== 5) {
       built[item.day][index] = {
         code: item.subject,
@@ -175,7 +213,7 @@ function DailyView({ items, selectedDay, isToday, currentMinutes, holiday, isDef
     {holiday ? (
       <div className="routine-holiday-banner">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>
+          <rect x="3" y="4" width="18" height="17" rx="3" /><path d="M8 2v4M16 2v4M3 10h18" /><path d="M8 14h.01M12 14h.01M16 14h.01" />
         </svg>
         <div>
           <b>{holiday.label}</b>
@@ -205,10 +243,45 @@ function DailyView({ items, selectedDay, isToday, currentMinutes, holiday, isDef
 
 function ClassCard({ item, isLive }) {
   const periodCount = item.end - item.start + 1;
-  return <article className={`routine-class-v2 tone-${item.tone} ${isLive ? 'is-live' : ''}`} style={{ '--period-count': periodCount }} aria-label={`${item.code}, ${item.time}, ${periodCount} ${periodCount === 1 ? 'period' : 'periods'}`}><div className="routine-time-v2"><span>{item.time}</span>{isLive && <b><i />{`Now`}</b>}</div><div className="routine-class-main"><div className="routine-subject-line"><h2>{item.code}</h2>{periodCount > 1 && <span>{periodCount} periods</span>}</div><div className="routine-details-v2">{item.teacher && <span><UserIcon />{item.teacher}</span>}{item.room && <span><PinIcon />Room {item.room}</span>}</div></div></article>;
+  const meta = SUBJECT_META[item.code] || {};
+  return (
+    <article
+      className={`routine-class-v2 tone-${item.tone} ${isLive ? 'is-live' : ''}`}
+      style={{ '--period-count': periodCount }}
+      aria-label={`${item.code}, ${item.time}, ${periodCount} ${periodCount === 1 ? 'period' : 'periods'}`}
+    >
+      <div className="routine-time-v2">
+        <span>{item.time}</span>
+        {isLive && <b><i />{`Now`}</b>}
+      </div>
+      <div className="routine-class-main">
+        <div className="routine-subject-line">
+          <h2>{item.code}</h2>
+          {periodCount > 1 && <span>{periodCount} periods</span>}
+        </div>
+        {meta.name && (
+          <div className="routine-course-name">
+            {meta.name}
+          </div>
+        )}
+        <div className="routine-details-v2">
+          {item.teacher && <span><UserIcon />{item.teacher}</span>}
+          {item.room && <span><PinIcon />Room {item.room}</span>}
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function WeeklyView({ schedule, todayName, holidays, isDefaultMode, onToggleMode, onSelectDay }) {
+  const todayCardRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (todayCardRef.current) {
+      todayCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, []);
+
   return (
     <div className="routine-week-v2">
       <div className="routine-week-intro">
@@ -242,19 +315,21 @@ function WeeklyView({ schedule, todayName, holidays, isDefaultMode, onToggleMode
 
       <div className="routine-week-grid">
         {DAYS.map((day) => {
+          const isToday = day === todayName;
           const dateStr = getDateStrForDayName(day);
           const holiday = findHolidayForDate(dateStr, holidays);
           const items = mergeDay(schedule[day]).filter((item) => item.type === 'class');
           return (
             <button
               key={day}
-              className={`routine-week-day ${day === todayName ? 'is-today' : ''} ${holiday ? 'is-holiday' : ''}`}
+              ref={isToday ? todayCardRef : null}
+              className={`routine-week-day ${isToday ? 'is-today' : ''} ${holiday ? 'is-holiday' : ''}`}
               onClick={() => onSelectDay(day)}
             >
               <div className="routine-week-day-head">
                 <div>
                   <span>{day.slice(0, 3)}</span>
-                  <strong>{day === todayName ? 'Today' : holiday ? 'Holiday' : `${items.length} classes`}</strong>
+                  <strong>{isToday ? 'Today' : holiday ? 'Holiday' : `${items.length} classes`}</strong>
                 </div>
                 <em aria-hidden="true"><ChevronIcon /></em>
               </div>
@@ -264,20 +339,44 @@ function WeeklyView({ schedule, todayName, holidays, isDefaultMode, onToggleMode
                 ) : items.length ? (
                   items.map((item, index) => {
                     const periodCount = item.end - item.start + 1;
+                    const displayTime = formatRoutineTime(item.time);
                     return (
                       <div
                         className={`routine-week-item tone-${item.tone}`}
-                        style={{ '--period-count': periodCount }}
                         key={`${item.code}-${index}`}
                       >
-                        <span>{item.time}</span>
-                        <b>{item.code}</b>
-                        <small>{item.room ? `R. ${item.room}` : 'Room TBA'}</small>
+                        <div className="routine-week-time-header">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          <span className="routine-week-time-text">{displayTime}</span>
+                          {periodCount > 1 && (
+                            <span className="routine-week-period-badge">{periodCount} periods</span>
+                          )}
+                        </div>
+
+                        <div className="routine-week-body">
+                          <div className="routine-week-title-row">
+                            <b className="routine-week-code">{item.code}</b>
+                          </div>
+
+                          <div className="routine-week-meta-row">
+                            {item.teacher && (
+                              <span className="routine-week-tag">
+                                <UserIcon /> {item.teacher}
+                              </span>
+                            )}
+                            <span className="routine-week-tag">
+                              <PinIcon /> {item.room ? `Room ${item.room}` : 'Room TBA'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     );
                   })
                 ) : (
-                  <p>No classes</p>
+                  <p className="routine-week-no-classes">No classes</p>
                 )}
               </div>
             </button>

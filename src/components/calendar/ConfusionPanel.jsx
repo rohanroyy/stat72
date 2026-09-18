@@ -307,6 +307,14 @@ export default function ConfusionPanel({
     return unsub;
   }, [examId, loadPosts]);
 
+  // ── Hide bottom nav while ConfusionPanel is open ────────────────────────────
+  useEffect(() => {
+    document.body.classList.add('confusion-panel-open');
+    return () => {
+      document.body.classList.remove('confusion-panel-open');
+    };
+  }, []);
+
   // ── History / back support ───────────────────────────────────────────────────
   useEffect(() => {
     window.history.pushState({ confusionPanel: true, examId, view: 'list' }, '');

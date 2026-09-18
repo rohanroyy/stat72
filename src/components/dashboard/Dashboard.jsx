@@ -1,17 +1,70 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import GlimpseUploaderCard from '../glimpse/GlimpseUploaderCard';
+import { submitRating, fetchTodayRatings, normaliseSubject } from '../../services/ratingService';
+import { SUBJECT_META } from '../explore/ClassCountPanel';
 
 
 // Motivational quotes shown in header
 const QUOTES = [
-  'Small steps today, big results tomorrow.',
-  'Focus on progress, not perfection.',
-  'Every expert was once a beginner.',
-  'Study hard, dream big, achieve more.',
-  'Consistency beats talent every time.',
-  'Your future self will thank you.',
-  'One page at a time, one day at a time.',
+  'Class started. The comeback starts now.',
+  'Brain loading… please wait.',
+  'Make memories, collect knowledge.',
+  'Ambition high, attendance negotiable.',
+  'Keep going. Your story is still being written.',
+  'Sleep schedule has left the group.',
+  'Syllabus waits for no one.',
+  'Class today. Stories tomorrow.',
+  'Dream big. Sleep less. Complain anyway.',
+  'The struggle is part of the syllabus.',
+  'Your future is built on ordinary days.',
+  'Some chase grades. Some chase sleep.',
+  'Learn. Laugh. Repeat.',
+  'No pressure. Just an entire future.',
+  'Back to class, back to reality.',
+  'Be consistent. Even if your attendance isn’t.',
+  'Everything is under control. Probably.',
+  'The journey is the flex.',
+  'Grades matter. So do the stories behind them.',
+  'Keep going, even when nobody notices.',
+  'Syllabus এগিয়ে যাচ্ছে. আমরাও… hopefully.',
+  'Do something today your future self will respect.',
+  'Academic comeback loading...',
+  'Coffee first. Statistics later.',
+  'Make today worth remembering.',
+  'Progress over perfection. Panic over procrastination.',
+  'New classes, new lessons, same old friends.',
+  'Excuses don’t get grades.',
+  'One lecture at a time. One crisis at a time.',
+  'Another semester, another chance to surprise ourselves.',
+  'The syllabus doesn’t care about your feelings.',
+  'Dream. Do. Repeat.',
+  'Show up. Learn something. Make memories.',
+  'Not there yet. Getting there.',
+  'Brain says study. Body says sleep.',
+  'Let’s make this year count.',
+  'Some chase success. We chase the attendance sheet first.',
+  'Keep going. Keep growing.',
+  'The comeback is always under construction.',
+  'Future us will remember this.',
+  'One day, all this chaos will make sense.',
+  'Study smart. Panic smarter.',
+  'Your next chapter needs your effort today.',
+  'Here we go again.',
+  'Make the effort worth the outcome.',
+  'We came to learn. Somehow, chaos came too.',
+  'Deadline is just motivation with a date.',
+  'Start where you are. Build from there.',
+  'You can ignore the syllabus. The syllabus won’t ignore you.',
+  'Future you has enough problems.',
+  'Not everyone has to understand the journey.',
+  'One good day can change the direction.',
+  'The goal is progress, not perfection.',
+  '৭২ চলছে. গল্পও চলবে.',
+  'Be the reason your future self says, “Worth it.”',
+  'Less excuses. More attempts.',
+  'We understand everything… eventually.',
+  'Chaos today. Memories tomorrow.',
 ];
 
 // ── Routine helpers (mirrored from RoutinePage) ──────────────────────────────
@@ -19,11 +72,11 @@ const ROUTINE_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 const ROUTINE_TIMES = ['8.00-8.50', '9.00-9.50', '10.00-10.50', '11.00-11.50', '12.00-12.50', '1.00-2.00', '2.00-2.50', '3.00-3.50'];
 const SUBJECT_TONES = { 'H-401': 'blue', 'H-402': 'violet', 'H-403': 'violet', 'H-404': 'coral', 'H-405': 'gold', 'H-406': 'rose', 'H-407': 'blue', 'H-408': 'coral' };
 const DEFAULT_SCHEDULE = {
-  Sunday:    [null, null, { code: 'H 406', room: '402', teacher: 'JAK' }, { code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-405', room: '402', teacher: 'MI' }, 'break', null, null],
-  Monday:    [null, null, { code: 'H 402', room: '402', teacher: 'FA' }, { code: 'H 401', room: '436', teacher: 'BH' }, { code: 'H 401', room: '436', teacher: 'BH' }, 'break', { code: 'H 408', room: '401', teacher: 'JHK' }, { code: 'H 408', room: '401', teacher: 'JHK' }],
-  Tuesday:   [{ code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H 406', room: '406', teacher: 'JAK' }, { code: 'H 403', room: '427', teacher: 'FTZ' }, 'break', { code: 'H-407', room: '402', teacher: 'NS' }, null],
+  Sunday: [null, null, { code: 'H 406', room: '402', teacher: 'JAK' }, { code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-405', room: '402', teacher: 'MI' }, 'break', null, null],
+  Monday: [null, null, { code: 'H 402', room: '402', teacher: 'FA' }, { code: 'H 401', room: '436', teacher: 'BH' }, { code: 'H 401', room: '436', teacher: 'BH' }, 'break', { code: 'H 408', room: '401', teacher: 'JHK' }, { code: 'H 408', room: '401', teacher: 'JHK' }],
+  Tuesday: [{ code: 'H-405', room: '402', teacher: 'MI' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H 406', room: '406', teacher: 'JAK' }, { code: 'H 403', room: '427', teacher: 'FTZ' }, 'break', { code: 'H-407', room: '402', teacher: 'NS' }, null],
   Wednesday: [null, { code: 'H 402', room: '402', teacher: 'FA' }, { code: 'H 408', room: '402', teacher: 'JHK' }, { code: 'H 401', room: '402', teacher: 'BH' }, { code: 'H 403', room: '427', teacher: 'FTZ' }, 'break', { code: 'H 403', room: '427', teacher: 'FTZ' }, null],
-  Thursday:  [null, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-407', room: '402', teacher: 'NS' }, { code: 'H-407', room: '402', teacher: 'NS' }, 'break', null, null],
+  Thursday: [null, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-404', room: '402', teacher: 'KKS' }, { code: 'H-407', room: '402', teacher: 'NS' }, { code: 'H-407', room: '402', teacher: 'NS' }, 'break', null, null],
 };
 
 const normCode = (v = '') => v.replace(/[\s-]/g, '').toLowerCase();
@@ -94,6 +147,22 @@ function buildSchedule(routineList) {
 }
 
 export default function Dashboard({ student: initialStudent, exams = [], routineList = [], holidays = [], isCR = false, onProfileUpdate, onLogout, onChangeTab }) {
+  // ── Rating state ──────────────────────────────────────────────────────────
+  const [showRatePanel, setShowRatePanel] = useState(false);
+  const [todayRatings, setTodayRatings] = useState([]); // already-submitted today
+  const [ratePanelKey, setRatePanelKey] = useState(0); // force re-mount after submit
+
+  const loadTodayRatings = useCallback(async () => {
+    if (!initialStudent?.id) return;
+    try {
+      const rows = await fetchTodayRatings(initialStudent.id);
+      setTodayRatings(rows || []);
+    } catch (err) {
+      console.error('[Dashboard] fetchTodayRatings:', err);
+    }
+  }, [initialStudent?.id]);
+
+  useEffect(() => { loadTodayRatings(); }, [loadTodayRatings]);
   const [student, setStudent] = useState(initialStudent);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -616,7 +685,14 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
       </div>
 
       {/* ── Today's Classes ──────────────────────────────────────── */}
-      <TodaysClasses routineList={routineList} holidays={holidays} nowMinutes={nowMinutes} onChangeTab={onChangeTab} />
+      <TodaysClasses
+        routineList={routineList}
+        holidays={holidays}
+        nowMinutes={nowMinutes}
+        onChangeTab={onChangeTab}
+        todayRatings={todayRatings}
+        onOpenRatePanel={() => { setRatePanelKey(k => k + 1); setShowRatePanel(true); }}
+      />
 
       {/* ── Glimpse Uploader Option Card ────────────────────────────── */}
       <GlimpseUploaderCard student={student} />
@@ -727,6 +803,19 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
         </button>
       )}
 
+      {/* ── Rate Today's Classes Panel ────────────────────────────────── */}
+      {showRatePanel && (
+        <RateTodaysClassesPanel
+          key={ratePanelKey}
+          routineList={routineList}
+          holidays={holidays}
+          nowMinutes={nowMinutes}
+          studentId={student?.id}
+          todayRatings={todayRatings}
+          onClose={() => setShowRatePanel(false)}
+          onRatingSubmitted={() => loadTodayRatings()}
+        />
+      )}
 
       {/* ── Profile Modal ────────────────────────────────────────── */}
       {showProfileModal && (
@@ -835,13 +924,13 @@ export default function Dashboard({ student: initialStudent, exams = [], routine
 }
 
 // ── Today's Classes Sub-Component ─────────────────────────────────────────────
-function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) {
+function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab, todayRatings = [], onOpenRatePanel }) {
   const todayFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
   const isWeekend = !ROUTINE_DAYS.includes(todayFull);
 
   // Compute today's date string (YYYY-MM-DD) for holiday check
   const todayDate = new Date();
-  const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+  const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
 
   // Check if today is a holiday
   const todayHoliday = holidays.find(h => {
@@ -859,6 +948,28 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
     return endMin > nowMinutes;
   });
 
+  // Classes that have already ended today — used to show the rate card
+  const endedClasses = allClasses.filter(cls => {
+    const [, endMin] = parseRoutineTime(cls.time);
+    return endMin <= nowMinutes;
+  });
+
+  // Deduplicate ended classes by subject (a double-slot = 1 ratable class)
+  const uniqueEnded = [];
+  const seenSubjects = new Set();
+  for (const cls of endedClasses) {
+    const key = normaliseSubject(cls.code);
+    if (!seenSubjects.has(key)) {
+      seenSubjects.add(key);
+      uniqueEnded.push(cls);
+    }
+  }
+
+  // Which of those has the student NOT rated yet today?
+  const ratedKeys = new Set((todayRatings || []).map(r => normaliseSubject(r.subject)));
+  const unratedEnded = uniqueEnded.filter(cls => !ratedKeys.has(normaliseSubject(cls.code)));
+  const showRateCard = !isWeekend && !todayHoliday && unratedEnded.length > 0;
+
   // Format time slot for display: '10.00-10.50' → '10:00 – 10:50'
   const fmtTime = (timeStr) => {
     return timeStr.replace('-', ' – ').replace(/\./g, ':');
@@ -871,11 +982,11 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
   };
 
   const TONE_COLORS = {
-    blue:   { bg: '#1d4ed8', badge: '#93c5fd', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    blue: { bg: '#1d4ed8', badge: '#93c5fd', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
     violet: { bg: '#6d28d9', badge: '#c4b5fd', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
-    coral:  { bg: '#c2410c', badge: '#fca5a5', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
-    gold:   { bg: '#b45309', badge: '#fcd34d', text: '#ffffff', sub: 'rgba(255,255,255,0.80)' },
-    rose:   { bg: '#be185d', badge: '#f9a8d4', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    coral: { bg: '#c2410c', badge: '#fca5a5', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
+    gold: { bg: '#b45309', badge: '#fcd34d', text: '#ffffff', sub: 'rgba(255,255,255,0.80)' },
+    rose: { bg: '#be185d', badge: '#f9a8d4', text: '#ffffff', sub: 'rgba(255,255,255,0.72)' },
   };
 
   return (
@@ -892,17 +1003,17 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
       {isWeekend ? (
         <div className="dash-no-exams">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
-            <path d="M12 6v6l4 2"/>
+            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" />
+            <path d="M12 6v6l4 2" />
           </svg>
           <span>No classes on weekends — enjoy your break!</span>
         </div>
       ) : todayHoliday ? (
         <div className="dash-no-exams dash-holiday-banner" style={{ color: '#000000' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="17" rx="3"/>
-            <path d="M8 2v4M16 2v4M3 10h18"/>
-            <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+            <rect x="3" y="4" width="18" height="17" rx="3" />
+            <path d="M8 2v4M16 2v4M3 10h18" />
+            <path d="M8 14h.01M12 14h.01M16 14h.01" />
           </svg>
           <span style={{ color: '#000000' }}>
             <b style={{ color: '#000000' }}>{todayHoliday.label}</b>{todayHoliday.note ? ` — ${todayHoliday.note}` : ''} · No classes today
@@ -911,8 +1022,8 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
       ) : upcomingClasses.length === 0 ? (
         <div className="dash-no-exams">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
           <span>All classes for today are done — great work!</span>
         </div>
@@ -956,7 +1067,7 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
                   {cls.teacher && (
                     <span className="dash-class-meta-item" style={{ color: colors.sub }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <circle cx="12" cy="7" r="4"/><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6"/>
+                        <circle cx="12" cy="7" r="4" /><path d="M4 21c.7-4 3.3-6 8-6s7.3 2 8 6" />
                       </svg>
                       {cls.teacher}
                     </span>
@@ -964,7 +1075,7 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
                   {cls.room && (
                     <span className="dash-class-meta-item" style={{ color: colors.sub }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+                        <path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" />
                       </svg>
                       R. {cls.room}
                     </span>
@@ -975,6 +1086,244 @@ function TodaysClasses({ routineList, holidays = [], nowMinutes, onChangeTab }) 
           })}
         </div>
       )}
+
+      {/* ── Rate Today's Classes Card ────────────────────────────────────── */}
+      {showRateCard && (
+        <button
+          type="button"
+          className="dash-rate-card"
+          onClick={onOpenRatePanel}
+          aria-label="Rate today's classes"
+        >
+          <div className="dash-rate-card-left">
+            <div className="dash-rate-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div className="dash-rate-card-body">
+              <span className="dash-rate-card-title">Rate today's classes</span>
+              <span className="dash-rate-card-sub">{unratedEnded.length} {unratedEnded.length === 1 ? 'class' : 'classes'} to rate</span>
+            </div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="dash-rate-card-arrow">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Rate Today's Classes Panel ────────────────────────────────────────────────
+function RateTodaysClassesPanel({ routineList, holidays = [], nowMinutes, studentId, todayRatings = [], onClose, onRatingSubmitted }) {
+  const todayFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+  const isWeekend = !ROUTINE_DAYS.includes(todayFull);
+
+  const todayDate = new Date();
+  const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+  const todayHoliday = holidays.find(h => {
+    if (!h.date) return false;
+    if (h.isRange && h.endDate) return todayStr >= h.date && todayStr <= h.endDate;
+    return todayStr === h.date;
+  }) || null;
+
+  const schedule = buildSchedule(routineList);
+  const allClasses = (isWeekend || todayHoliday) ? [] : mergeRoutineDay(schedule[todayFull] || []);
+
+  // All ended classes (deduplicated by subject)
+  const endedClasses = allClasses.filter(cls => {
+    const [, endMin] = parseRoutineTime(cls.time);
+    return endMin <= nowMinutes;
+  });
+  const uniqueEnded = [];
+  const seenSubjects = new Set();
+  for (const cls of endedClasses) {
+    const key = normaliseSubject(cls.code);
+    if (!seenSubjects.has(key)) {
+      seenSubjects.add(key);
+      uniqueEnded.push(cls);
+    }
+  }
+
+  // Local rating state: { [normaliseSubject(code)]: number }
+  const [selectedStars, setSelectedStars] = useState({});
+  const [submitting, setSubmitting] = useState({});
+  const [submitted, setSubmitted] = useState(() => {
+    // Pre-fill already-submitted ratings
+    const s = {};
+    (todayRatings || []).forEach(r => { s[normaliseSubject(r.subject)] = r.rating; });
+    return s;
+  });
+  const [hovered, setHovered] = useState({});
+  const [allDone, setAllDone] = useState(false);
+
+  // Handle back gesture
+  useEffect(() => {
+    window.history.pushState({ panel: 'rate' }, '');
+    const onPop = (e) => {
+      if (!e.state?.panel) onClose();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [onClose]);
+
+  const handleSubmit = async (cls) => {
+    const key = normaliseSubject(cls.code);
+    const stars = selectedStars[key];
+    if (!stars || !studentId) return;
+
+    setSubmitting(prev => ({ ...prev, [key]: true }));
+    try {
+      await submitRating({
+        studentId,
+        subject: cls.code,
+        teacher: cls.teacher || '',
+        rating: stars,
+      });
+      setSubmitted(prev => ({ ...prev, [key]: stars }));
+      setSelectedStars(prev => { const n = { ...prev }; delete n[key]; return n; });
+      onRatingSubmitted();
+
+      // Check if all classes are now rated
+      const newSubmitted = { ...submitted, [key]: stars };
+      const allRated = uniqueEnded.every(c => newSubmitted[normaliseSubject(c.code)] !== undefined);
+      if (allRated) {
+        setAllDone(true);
+        setTimeout(() => onClose(), 1600);
+      }
+    } catch (err) {
+      console.error('[RatePanel] submit error:', err);
+    } finally {
+      setSubmitting(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  // Get subject display name from SUBJECT_META
+  const getSubjectName = (code) => {
+    const normKey = Object.keys(SUBJECT_META).find(k => normaliseSubject(k) === normaliseSubject(code));
+    return normKey ? SUBJECT_META[normKey].name : '';
+  };
+
+  return (
+    <div className="rate-panel-overlay" onClick={onClose}>
+      <div className="rate-panel" onClick={e => e.stopPropagation()}>
+        {/* ── Header ── */}
+        <div className="rate-panel-header">
+          <button
+            className="rate-panel-back-btn"
+            onClick={onClose}
+            aria-label="Close panel"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Back</span>
+          </button>
+          <h3 className="rate-panel-title">Rate Today's Classes</h3>
+          <div style={{ width: 44 }} />
+        </div>
+
+        {/* ── Content ── */}
+        <div className="rate-panel-body">
+          {allDone ? (
+            <div className="rate-panel-done">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              <p>All classes rated!</p>
+            </div>
+          ) : uniqueEnded.length === 0 ? (
+            <div className="rate-panel-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              <p>No ended classes to rate yet.</p>
+            </div>
+          ) : (
+            uniqueEnded.map(cls => {
+              const key = normaliseSubject(cls.code);
+              const alreadyRated = submitted[key] !== undefined;
+              const currentStars = selectedStars[key] || 0;
+              const hoveredStars = hovered[key] || 0;
+              const displayStars = hoveredStars || currentStars;
+              const isSubmitting = submitting[key];
+              const subjectName = getSubjectName(cls.code);
+
+              return (
+                <div key={key} className={`rate-class-card${alreadyRated ? ' rate-class-card-done' : ''}`}>
+                  <div className="rate-class-card-header">
+                    <div className="rate-class-card-info">
+                      <span className="rate-class-teacher">Rate {cls.teacher}'s Class</span>
+                      <span className="rate-class-subject">{subjectName || cls.code}</span>
+                      <span className="rate-class-code">{cls.code} · {cls.time.replace('-', ' – ').replace(/\./g, ':')}</span>
+                    </div>
+                    {alreadyRated && (
+                      <div className="rate-class-done-badge">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {alreadyRated ? (
+                    <div className="rate-stars-row">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <svg key={s} width="26" height="26" viewBox="0 0 24 24"
+                          fill={submitted[key] >= s ? '#F59E0B' : 'none'}
+                          stroke={submitted[key] >= s ? '#F59E0B' : '#CBD5E1'}
+                          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      ))}
+                      <span className="rate-rated-label">{submitted[key]}/5</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rate-stars-row">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`rate-star-btn${displayStars >= s ? ' rate-star-filled' : ''}`}
+                            onMouseEnter={() => setHovered(prev => ({ ...prev, [key]: s }))}
+                            onMouseLeave={() => setHovered(prev => ({ ...prev, [key]: 0 }))}
+                            onClick={() => setSelectedStars(prev => ({ ...prev, [key]: s }))}
+                            aria-label={`Rate ${s} star${s !== 1 ? 's' : ''}`}
+                          >
+                            <svg width="28" height="28" viewBox="0 0 24 24"
+                              fill={displayStars >= s ? '#F59E0B' : 'none'}
+                              stroke={displayStars >= s ? '#F59E0B' : '#94A3B8'}
+                              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                              style={{ transition: 'fill 0.15s, stroke 0.15s' }}
+                            >
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                      {currentStars > 0 && (
+                        <button
+                          type="button"
+                          className="rate-submit-btn"
+                          onClick={() => handleSubmit(cls)}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? 'Submitting…' : 'Submit Rating'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -32,6 +32,7 @@ import { loadAppData } from './services/dataService';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import loadingAnimation from './assets/loading.json';
 import { initExamNotifications, showUserActivityNotification } from './services/notificationService';
+import { initClassReminderScheduler, clearClassReminderScheduler } from './services/classReminderService';
 import { fetchBroadcastNotifications } from './services/broadcastService';
 import { fetchUnreadCount, markAllAsRead, subscribeToMyNotifications } from './services/userNotificationService';
 import { fetchCRIds, fetchHolidays, fetchTodayOverride, fetchWeekOverride, resetWeekOverride, clearTodayOverride, mergeRoutineWithOverrides } from './services/crService';
@@ -450,6 +451,18 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
     initExamNotifications(examsList);
   }, [examsList]);
 
+  // Automatically schedule/send class notifications before the night around 10:00 PM if tomorrow has classes
+  useEffect(() => {
+    initClassReminderScheduler({
+      routineList,
+      weekOverride: crWeekOverride,
+      holidays: holidayList,
+    });
+    return () => {
+      clearClassReminderScheduler();
+    };
+  }, [routineList, crWeekOverride, holidayList]);
+
 
   const lastProcessedNotifRef = useRef(localStorage.getItem('bahattor_last_processed_notif_id') || '');
 
@@ -480,20 +493,31 @@ function AppMain({ initialData, localApiKey, onSaveApiKey }) {
                            (notif.target === currentStudentId);
         if (isTargeted) {
           if (Notification.permission === 'granted') {
+            const targetUrl = notif.action_url || '/';
             const options = {
               body: notif.body,
               tag: notif.id,
               icon: '/pwa-192x192.png',
               badge: '/favicon.png',
               requireInteraction: true,
-              data: { url: '/' }
+              data: { url: targetUrl }
             };
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.ready.then(reg => {
                 reg.showNotification(notif.title, options);
-              }).catch(() => new Notification(notif.title, options));
+              }).catch(() => {
+                const n = new Notification(notif.title, options);
+                n.onclick = () => {
+                  window.focus();
+                  if (targetUrl) window.location.href = targetUrl;
+                };
+              });
             } else {
-              new Notification(notif.title, options);
+              const n = new Notification(notif.title, options);
+              n.onclick = () => {
+                window.focus();
+                if (targetUrl) window.location.href = targetUrl;
+              };
             }
           }
         }
