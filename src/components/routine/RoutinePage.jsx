@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { SUBJECT_META } from '../explore/ClassCountPanel';
+import { SUBJECT_META, getSubjectMeta } from '../explore/ClassCountPanel';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 const TIMES = ['8.00-8.50', '9.00-9.50', '10.00-10.50', '11.00-11.50', '12.00-12.50', '1.00-2.00', '2.00-2.50', '3.00-3.50'];
@@ -243,7 +243,12 @@ function DailyView({ items, selectedDay, isToday, currentMinutes, holiday, isDef
 
 function ClassCard({ item, isLive }) {
   const periodCount = item.end - item.start + 1;
-  const meta = SUBJECT_META[item.code] || {};
+  const meta = getSubjectMeta(item.code);
+  const teacher = item.teacher || meta.teacher || '';
+  const room = item.room || meta.room || '';
+  const cleanRoom = String(room).replace(/^r\.?\s*/i, '').replace(/^room\s*/i, '').trim();
+  const formattedTime = (item.time || '').replace(/\./g, ':').replace('-', ' – ');
+
   return (
     <article
       className={`routine-class-v2 tone-${item.tone} ${isLive ? 'is-live' : ''}`}
@@ -251,7 +256,7 @@ function ClassCard({ item, isLive }) {
       aria-label={`${item.code}, ${item.time}, ${periodCount} ${periodCount === 1 ? 'period' : 'periods'}`}
     >
       <div className="routine-time-v2">
-        <span>{item.time}</span>
+        <span>{formattedTime}</span>
         {isLive && <b><i />{`Now`}</b>}
       </div>
       <div className="routine-class-main">
@@ -264,10 +269,12 @@ function ClassCard({ item, isLive }) {
             {meta.name}
           </div>
         )}
-        <div className="routine-details-v2">
-          {item.teacher && <span><UserIcon />{item.teacher}</span>}
-          {item.room && <span><PinIcon />Room {item.room}</span>}
-        </div>
+        {(teacher || cleanRoom) && (
+          <div className="routine-details-v2">
+            {teacher && <span><UserIcon />{teacher}</span>}
+            {cleanRoom && <span><PinIcon />Room {cleanRoom}</span>}
+          </div>
+        )}
       </div>
     </article>
   );
