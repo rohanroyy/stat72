@@ -1158,14 +1158,18 @@ function RateTodaysClassesPanel({ routineList, holidays = [], nowMinutes, studen
   const [hovered, setHovered] = useState({});
   const [allDone, setAllDone] = useState(false);
 
-  // Handle back gesture
+  // Handle back gesture & hide bottom navigation capsule
   useEffect(() => {
+    document.body.classList.add('rate-panel-open');
     window.history.pushState({ panel: 'rate' }, '');
     const onPop = (e) => {
       if (!e.state?.panel) onClose();
     };
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    return () => {
+      document.body.classList.remove('rate-panel-open');
+      window.removeEventListener('popstate', onPop);
+    };
   }, [onClose]);
 
   const handleSubmit = async (cls) => {
